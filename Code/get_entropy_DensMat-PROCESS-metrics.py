@@ -31,13 +31,13 @@ seed = 837
 np.random.seed(seed) #reference
 
 # Backend
-backend_params = BackendParams('Aer_sim') #always
+backend_params = BackendParams('Aer_sim')
 
 # Quantum circuit
-circuit_params = CircuitParams('HEA_RIGETTI', num_qubits_min = 3, num_qubits_max = 5, num_qubits_step=1, depth_min = 0, depth_max = 15)
+circuit_params = CircuitParams('HEA_RIGETTI', num_qubits_min = 2, num_qubits_max = 10, num_qubits_step=2, depth_min = 0, depth_max = 15)
 
 # Noise model
-noise_params = NoiseParams(p_DP1 = 0.01, p_DP2=0.1, p_AD1=0, p_AD2=0, p_meas=[[1, 0], [0, 1]])
+noise_params = NoiseParams()
 
 # Protocol params
 DensMat_params = ProtocolParams(name='DensMat', num_samples=0)

@@ -99,7 +99,7 @@ def get_and_save_measurements_circuit_SWAP(experiment_params):
         # ------------------------------------------------------------------
         
         #Initialise circuit
-        qc = init_circuit(num_qubits, circuit_params.depth_min, circuit_params.choice)
+        qc = init_circuit(circuit_params, num_qubits)
 
         for depth_index in range(circuit_params.depth_min, circuit_params.depth_max+1, circuit_params.depth_step):
             print("depth : ", depth_index)

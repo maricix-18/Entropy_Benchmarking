@@ -21,9 +21,7 @@ def compute_xticks(depth_tab, depth_step):
 # =============================================================================================================
 # Main functions for Shadows and SWAP
 
-def plot_metric(metric:str, metric_mean:list, metric_std:list, metric_exact:list, 
-                num_qubits:int, depth_min:int, depth_max:int, depth_step:int, 
-                show_fully_mixed_state:bool, compute_exact:bool, save_fig:bool, output_dir:str, filename:str):
+def plot_metric(metric:str, metric_mean:list, metric_std:list, metric_exact:list, num_qubits:int, depth_min:int, depth_max:int, depth_step:int, show_fully_mixed_state:bool, compute_exact:bool, save_fig:bool, output_dir:str, filename:str):
     plt.figure()
     depth_tab = np.arange(depth_min, depth_max+1, depth_step)
     plt.errorbar(x=depth_tab, y=metric_mean, yerr=metric_std, ecolor="red", capsize=3, ls='none', label='estimate')
@@ -108,7 +106,7 @@ def plot_metric_DensMat(metric, experiment_params, metrics, plot_dir, show_maxim
 
     plt.figure()
     d = np.arange(circuit_params.depth_min, circuit_params.depth_max+1, circuit_params.depth_step)
-    for num_qubits in range(circuit_params.num_qubits_min, circuit_params.num_qubits_max+1):
+    for num_qubits in range(circuit_params.num_qubits_min, circuit_params.num_qubits_max+1, circuit_params.num_qubits_step):
         if num_qubits == 1 and not metric == 'von Neumann entropy density':
             if metric == 'Purity':
                 metric_lim = (1/4)*(1+noise_params.p_AD1/(1 - (1 - noise_params.p_DP1)*(1 - noise_params.p_AD1)))**2 + (1/4)*(1/(1 + noise_params.p_AD1/(noise_params.p_DP1 * (1 - noise_params.p_AD1))))**2
@@ -116,9 +114,11 @@ def plot_metric_DensMat(metric, experiment_params, metrics, plot_dir, show_maxim
                 pur_lim = (1/4)*(1+noise_params.p_AD1/(1 - (1 - noise_params.p_DP1)*(1 - noise_params.p_AD1)))**2 + (1/4)*(1/(1 + noise_params.p_AD1/(noise_params.p_DP1 * (1 - noise_params.p_AD1))))**2    
                 metric_lim = -np.log2(pur_lim)/num_qubits
             plt.plot(d, [metric_lim]*len(d), linestyle='--', color='black', label='predicted limit')
-        plt.plot(d, metrics['all_'+metric_short+'_diff_n'][num_qubits-circuit_params.num_qubits_min], marker='.', label='$n = $' + str(num_qubits))
+        plt.plot(d, metrics['all_'+metric_short+'_diff_n'][int((num_qubits-circuit_params.num_qubits_min)/circuit_params.num_qubits_step)], label='$n = $' + str(num_qubits))
     if show_maximally_mixed_state:
-        if metric == 'von Neumann entropy density' or metric == 'Renyi-2 entropy density':
+        if metric == 'Purity':
+            plt.axhline(y=1/2**num_qubits, color='black', linestyle='-.', label='maximally mixed state')
+        elif metric == 'Renyi-2 entropy density':
             plt.axhline(y=1, color='black', linestyle='-.', label='maximally mixed state')
     plt.legend()
     plt.xlabel('Depth')

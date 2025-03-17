@@ -36,7 +36,7 @@ backend_params = BackendParams('Aer_sim')
 circuit_params = CircuitParams3Qbits('HEA_RIGETTI', depth_max=15)
 
 # Noise model
-noise_params = NoiseParams(p_DP1 = 0.01, p_DP2=0.1, p_AD1=0, p_AD2=0, p_meas=[[1, 0], [0, 1]])
+noise_params = NoiseParams()
 
 
 # SWAP test

@@ -38,5 +38,4 @@ class ExperimentParams:
             protocol_params = SWAPParams.from_dict(temp['protocol_params'])
         elif temp['protocol_params']['name'] == 'DensMat':
             protocol_params = ProtocolParams('DensMat', temp['protocol_params']['num_samples'])
-
         return ExperimentParams(backend_params, circuit_params, noise_params, protocol_params, temp['seed'], temp['timestamp'], temp['csv_files'], temp['metrics_file'])

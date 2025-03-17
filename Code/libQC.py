@@ -51,10 +51,11 @@ class CircuitParams:
     def init_angles(self):
         self.circuits_angles = np.zeros(self.num_circuits, dtype=object)
         for i in range(self.num_circuits):
+            num_qubits = self.num_qubits_min+self.num_qubits_step*i
             if self.rx_only:
-                num_angles_per_layer = self.num_qubits_min+i
+                num_angles_per_layer = num_qubits
             else:
-                num_angles_per_layer = 2*(self.num_qubits_min+i)
+                num_angles_per_layer = 2*num_qubits
             angles = 2*np.pi*np.random.rand(num_angles_per_layer*self.num_layers) #dim=(1, angles_of_circuit)
             self.circuits_angles[i] = angles.reshape((self.num_layers, num_angles_per_layer)) #dim=(layers, angles_of_layer)
     def to_dict(self):
@@ -285,25 +286,25 @@ def get_noise_param_from_calibration_data (f1Q, f2Q, T1, time_1Q, time_2Q):
     return noise_params
 
 # Quantum circuits
-def init_circuit(num_qubits, depth_min, circuit_choice):
+def init_circuit(circuit_params, num_qubits):
     qc = QuantumCircuit(num_qubits)
-    if circuit_choice == 'QAOA_RIGETTI':
+    if circuit_params.choice == 'QAOA_RIGETTI':
         for i in range(0, num_qubits):
             apply_native_rigetti_h(qc, i)
         qc.barrier()
 
-    for _ in range(depth_min):
-        qc = add_circuit_layer(circuit_choice, num_qubits, qc)
+    for index in range(circuit_params.depth_min):
+        qc = add_circuit_layer(circuit_params, num_qubits, qc, index)
 
     return qc
 
 def add_circuit_layer(circuit_params, num_qubits, qc, layer_index):
     if circuit_params.choice == 'HEA_RIGETTI':
-        circuit_angles = circuit_params.circuits_angles[num_qubits-circuit_params.num_qubits_min]
+        circuit_angles = circuit_params.circuits_angles[int((num_qubits-circuit_params.num_qubits_min)/circuit_params.num_qubits_step)]
         params = circuit_angles[layer_index]
         qc = add_layer_HEA_RIGETTI(qc, num_qubits, params, circuit_params.rx_only)
     elif circuit_params.choice == 'HEA_IONQ':
-        circuit_angles = circuit_params.circuits_angles[num_qubits-circuit_params.num_qubits_min]
+        circuit_angles = circuit_params.circuits_angles[int((num_qubits-circuit_params.num_qubits_min)/circuit_params.num_qubits_step)]
         params = circuit_angles[layer_index]
         qc = add_layer_HEA_IONQ(qc, num_qubits, params)
     elif circuit_params.choice == 'QAOA_RIGETTI':

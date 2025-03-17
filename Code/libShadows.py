@@ -282,7 +282,7 @@ def get_and_save_measurements_circuit_CS(experiment_params, verbose=False):
         # ------------------------------------------------------------------
         
         #Initialise circuit
-        qc = init_circuit(num_qubits, circuit_params.depth_min, circuit_params.choice)
+        qc = init_circuit(circuit_params, num_qubits)
 
         for depth_index in range(circuit_params.depth_min, circuit_params.depth_max+1, circuit_params.depth_step):
             print("depth : ", depth_index)
@@ -332,7 +332,7 @@ def compute_metrics_from_csv_circuit_CS(experiment_params, verbose = False):
         # GET DATAFRAME
         if CS_params.artif_randomized == 'artif1' or CS_params.artif_randomized == 'artif2':
             experiment_params2 = experiment_params
-            experiment_params2.circuit_params = CircuitParams3Qbits(circuit_params.choice, depth_max=circuit_params.depth_max+15)#TODO remove +15 after depth_max here
+            experiment_params2.circuit_params = CircuitParams3Qbits(circuit_params.choice, depth_max=circuit_params.depth_max)
             experiment_params2.protocol_params = CSParams(num_samples=3, num_groups=1, M=27, K=1000, protocol_choice='derandomized')
 
             df = read_df_from_csv(experiment_params2, num_qubits)
