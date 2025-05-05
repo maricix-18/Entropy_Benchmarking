@@ -12,7 +12,7 @@ def get_experiment_dir(experiment_params):
 
 def get_experiment_csv_dir(experiment_params, num_qubits):
     dirname = get_experiment_dir(experiment_params) + str(num_qubits) + 'Q/Data/'
-    if experiment_params.protocol_params.name == 'CS' or experiment_params.protocol_params.name == 'Brydges':
+    if experiment_params.protocol_params.name == 'CS':
         return  dirname + experiment_params.protocol_params.protocol_choice[:6] +'/'
     elif experiment_params.protocol_params.name == 'SWAP':
         return dirname
@@ -59,20 +59,21 @@ def get_base_filename(experiment_params):
         else:
             last_id = protocol_params.protocol_choice[:6]
         base_filename = 'M%d_K%d_grps%d_spls%d_%s_' % (protocol_params.M, protocol_params.K, protocol_params.num_groups, protocol_params.num_samples, last_id)
-    elif protocol_params.name == 'Brydges':
-        base_filename = 'M%d_K%d_grps%d_spls%d_%s_' % (protocol_params.M, protocol_params.K, protocol_params.num_groups, protocol_params.num_samples, protocol_params.protocol_choice[:6])
     elif protocol_params.name == 'SWAP':
-        base_filename = 'meas%d_spls%d_' % (protocol_params.num_measurements, protocol_params.num_samples)
+        base_filename = 'meas%d_grps%d_spls%d_' % (protocol_params.num_measurements, protocol_params.num_groups, protocol_params.num_samples)
     elif protocol_params.name == 'DensMat':
         base_filename = ''
     
     return base_depth + base_filename
 
-def get_metrics_filename(experiment_params):
+def get_metrics_filename(experiment_params, mode=''):
     prefix = get_prefix_num_qubits(experiment_params.circuit_params)
     base_filename = get_base_filename(experiment_params)
     base_noise = get_base_noise(experiment_params)
-    return prefix + base_filename + base_noise + '.json'
+    if mode == '':
+        return prefix + base_filename + base_noise + '.json'    
+    else:
+        return prefix + base_filename + base_noise + "_" + mode + '.json'
 
 def get_CS_csv_filename(experiment_params):
     depth_max = experiment_params.circuit_params.depth_max
@@ -86,8 +87,9 @@ def get_CS_csv_filename(experiment_params):
 def get_SWAP_csv_filename(experiment_params):
     depth_max = experiment_params.circuit_params.depth_max
     num_measurements = experiment_params.protocol_params.num_measurements
+    num_groups = experiment_params.protocol_params.num_groups
     base_noise = get_base_noise(experiment_params)
-    filename = 'D%d_meas%d_' %(depth_max, num_measurements)
+    filename = 'D%d_meas%d_grps%d_' %(depth_max, num_measurements, num_groups)
 
     return filename + base_noise + '.csv'
 
@@ -98,11 +100,11 @@ def get_experiment_filename(experiment_params):
     return filename
 
 #GET FULL FILENAMES
-def get_metrics_fullfilename(experiment_params):
+def get_metrics_fullfilename(experiment_params, mode=''):
     dirname = get_experiment_metrics_dir(experiment_params)
     if not os.path.exists(dirname):
         os.makedirs(dirname)
-    filename = get_metrics_filename(experiment_params)
+    filename = get_metrics_filename(experiment_params, mode=mode)
     return dirname + filename
 
 
@@ -117,7 +119,7 @@ def init_csv_file(experiment_params, num_qubits):
         os.makedirs(dirname)
 
     protocol = experiment_params.protocol_params.name
-    if protocol == 'CS' or protocol == 'Brydges':
+    if protocol == 'CS':
         filename = get_CS_csv_filename(experiment_params)
     elif protocol == 'SWAP':
         filename = get_SWAP_csv_filename(experiment_params)
@@ -127,10 +129,10 @@ def init_csv_file(experiment_params, num_qubits):
         open(csv_file, 'r')
     except FileNotFoundError:
         print("File not found. Creating a new file.")
-        if protocol == 'CS' or protocol == 'Brydges':
+        if protocol == 'CS':
             names = ["depth_index"]+[str(i) for i in range(experiment_params.protocol_params.M)]
         elif protocol == 'SWAP':
-            names = ["depth_index","counts"]
+            names = ["depth_index"]+[str(i) for i in range(experiment_params.protocol_params.num_groups)]
         df = pd.DataFrame(names).T
         df.to_csv(csv_file, index=False, header=0)
         print("File created (header initialised).")

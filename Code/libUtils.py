@@ -9,6 +9,14 @@ def make_time_stamp():
 
 # print(make_time_stamp())
 
+def hamming_distance (string1, string2):
+    """
+    TODO move this function to libUtils
+    returns the hamming distance (number of positions where bits differ)
+    between string1 and string2
+    """
+    return sum(s1 != s2 for s1, s2 in zip(string1, string2))
+# print("hamming distance : ", hamming_distance('011101', '010011'))
 
 def ternary_list_to_decimal (ternary_list):
     """
@@ -74,3 +82,30 @@ def compute_stats(samples:list):
 def renyi_entropy_from_purity (purity):
     """returns the value of the second order Renyi entropy corresponding to purity value purity"""
     return (-1*np.log2(purity))
+
+
+def get_cumulative_of_list (my_list):
+    """
+    Compute the cumulative of the list my_list
+    """
+    return [sum(my_list[:i+1]) for i in range(len(my_list))]
+# print("cumulative : ", get_cumulative_of_list([0, 2, 6, 3, 1])) # expect [0, 2, 8, 11, 12]
+
+def get_sum_list (my_list):
+    return [sum(my_list) for _ in range(len(my_list))]
+# print("sum list : ", get_sum_list([1,3,2])) # expect [6, 6, 6]
+
+def get_cumulative_error_of_list (my_list):
+    """
+    Compute the cumulative error of the list my_list
+    """
+    return [sum(my_list[i+1:]) for i in range(len(my_list))]
+# print("cumulative error : ", get_cumulative_error_of_list([0, 2, 6, 3, 1])) # expect [12, 10, 4, 1, 0]
+
+def get_dataframe_specific_depth(df, wanted_depth_index):
+    sub_df = df.loc[ df ["depth_index"] == wanted_depth_index]
+    #print("sub dataframe: \n", sub_df)
+    if sub_df.empty:
+        print("Please check the wanted_depth_index as it is not in the original dataframe df.")
+        return (None)
+    return (sub_df)

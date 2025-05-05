@@ -18,6 +18,24 @@ def compute_xticks(depth_tab, depth_step):
         xticks = range(min(depth_tab), max(depth_tab)+1, int((max(depth_tab)-min(depth_tab)+1)/10))
     return xticks
 
+def compute_depth_tab(depth_min, depth_max, depth_step):
+    return np.arange(depth_min, depth_max+1, depth_step)
+
+def compute_depth_tab_more_points(depth_min, depth_max):
+    return np.linspace(depth_min, depth_max+1, 1000)
+
+def compute_filename(output_dir, metric, filename):
+    return output_dir+'/'+metric+'-'+filename
+
+def plot_params(xlabel, ylabel, xticks, ylim_max, save_fig, filename):
+    plt.xlabel(xlabel)
+    plt.xticks(xticks)
+    plt.ylabel(ylabel)
+    plt.ylim(bottom=0, top=ylim_max)
+    plt.legend()
+    if save_fig:
+        plt.savefig(filename)
+
 # =============================================================================================================
 # Main functions for Shadows and SWAP
 
@@ -58,7 +76,7 @@ def plot_metrics(metrics, metrics_exact, experiment_params, show_fully_mixed_sta
 
     circuit_params = experiment_params.circuit_params
      
-    filename = get_base_filename(experiment_params) + get_base_noise(experiment_params) + '.pdf'
+    filename = get_base_filename(experiment_params) + get_base_noise(experiment_params) + '.pdf' #svg'
 
     for num_qubits in range(circuit_params.num_qubits_min, circuit_params.num_qubits_max+1):
         print('\n Number of qubits = ', num_qubits)

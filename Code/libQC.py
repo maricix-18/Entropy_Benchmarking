@@ -9,6 +9,7 @@ import os
 from qiskit import QuantumCircuit
 import qiskit_aer.noise as noise
 from qiskit_aer import AerSimulator
+from qiskit import execute
 
 from qiskit_ionq import IonQProvider
 from qiskit_ionq import ErrorMitigation
@@ -58,6 +59,7 @@ class CircuitParams:
                 num_angles_per_layer = 2*num_qubits
             angles = 2*np.pi*np.random.rand(num_angles_per_layer*self.num_layers) #dim=(1, angles_of_circuit)
             self.circuits_angles[i] = angles.reshape((self.num_layers, num_angles_per_layer)) #dim=(layers, angles_of_layer)
+
     def to_dict(self):
         temp = dict()
         temp['choice'] = self.choice
@@ -142,15 +144,17 @@ class NoiseParams:
     def from_dict(temp):
         return NoiseParams(temp['p_DP1'], temp['p_DP2'], temp['p_AD1'], temp['p_AD2'], temp['p_meas'])
 
+# Noise model
+prob_dep_1 = 0.01 #0.01#0.01#0.01 #Google willow 10^-4=0.0001
+prob_dep_2 = 0.1 #0.1#0.1#0.1 #Google willow 10^-3=0.001
+prob_amp_damp_1 = 0
+prob_amp_damp_2 = 0
+prob_meas = [[1, 0], [0, 1]] #readout error probability
+
 class ProtocolParams:
     def __init__(self, name, num_samples=3):
         self.name = name
         self.num_samples = num_samples # Number of samples for the purity/entropy estimate
-
-class Metrics(dict):
-    def __init__(self, metric_list):
-        for m in metric_list:
-            self[m] = []
 
 # Functions ===================================================================
 
@@ -172,12 +176,37 @@ def add_native_ionq_ybasis_meas_unit(qc, qubit):
     qc.append(GPI2Gate(0.5), [qubit])
     return qc 
 
+def add_native_ionq_ybasis_meas(qc, qubit):
+    """
+    IonQ native gates decomposition for a Y-basis measurement
+    """
+    qc.append(GPI2Gate(0.5), [qubit])
+
+    # qc.append(GPIGate(0), [qubit])
+    # qc.append(GPIGate(-0.125), [qubit])
+    # qc.append(GPI2Gate(0.25), [qubit])
+    # qc.append(GPIGate(0), [qubit])
+    #print("qc \n", qc)
+    return qc 
+
 def add_native_ionq_xbasis_meas_unit(qc, qubit):
     """
     IonQ native gates decomposition for an X-basis measurement
     """
     qc.append(GPI2Gate(0.75), [qubit])
     return qc
+
+def add_native_ionq_xbasis_meas(qc, qubit):
+    """
+    IonQ native gates decomposition for an X-basis measurement
+    """
+    qc.append(GPI2Gate(0.75), [qubit])
+
+    # qc.append(GPI2Gate(0.25), [qubit])
+    # qc.append(GPIGate(0), [qubit])
+    #print("qc \n", qc)
+    return qc
+
 
 def apply_native_rigetti_h(qc, q0):
     """
@@ -209,13 +238,14 @@ def define_gates(circuit_choice, protocol_name):
         gates2Q_circuit = ['cz']
     elif circuit_choice == 'HEA_IONQ':
         gates1Q_circuit, gates2Q_circuit = [], [] #TODO replace with IONQ native gates
+        
     # protocol measurement circuit gates
     if protocol_name == 'CS':
-        gates1Q_meas =  ['h', 'sdg']
+        gates1Q_meas = []#['h', 'sdg'] #uncomment to add meas circ noise
         gates2Q_meas = []
     elif protocol_name == 'SWAP':
-        gates1Q_meas = ['h'] 
-        gates2Q_meas = ['cx']
+        gates1Q_meas = []#['h'] #uncomment to add meas circ noise
+        gates2Q_meas = []#['cx'] #uncomment to add meas circ noise
     elif protocol_name == 'DensMat':
         gates1Q_meas, gates2Q_meas = [], []
     return(list(set(gates1Q_circuit+gates1Q_meas)), list(set(gates2Q_circuit+gates2Q_meas)))
@@ -229,7 +259,7 @@ def define_backend(backend_params, noise_params, basis_gates=None):
         noise_model = build_noise_model(noise_params, gates_1Q, gates_2Q)
         backend = AerSimulator(noise_model=noise_model)
     elif backend_type == 'Rigetti_QPU':
-        #RIGETTI QPU 
+        #RIGETTI QPU
         provider = RigettiQCSProvider()
         provider.backends()
         backend = provider.get_backend('Ankaa-2', execution_timeout=200000, compiler_timeout=200000)
@@ -250,7 +280,13 @@ def define_backend(backend_params, noise_params, basis_gates=None):
 # Noise models
 def build_noise_model(noise_params, gates_1Q:list, gates_2Q:list):
     """
-    returns a local depolarising + amplitude damping + readout error noise model noise_model
+    returns a local depolarising + amplitude damping + readout error noise model noise_model  
+    for single-qubit depolarising probability prob_1
+    and second-qubit depolarising probability prob_2,
+    and single-qubit amplitude damping probability prob_amp_damp_1Q,
+    and second-qubit amplitude damping probability prob_amp_damp_2Q,
+    and readout error probability prob_meas in this form [[0.9, 0.1],[0.25,0.75]] i.e. [[P(0|0), P(1|0)],[P(0|1), P(1|1)]] 
+    where P(n|m) is the probability of measuring n given that the ideal (without readout noise) outcome is m
     """
     # Errors
     error_DP1 = noise.depolarizing_error(noise_params.p_DP1, 1)
@@ -297,6 +333,7 @@ def init_circuit(circuit_params, num_qubits):
         qc = add_circuit_layer(circuit_params, num_qubits, qc, index)
 
     return qc
+
 
 def add_circuit_layer(circuit_params, num_qubits, qc, layer_index):
     if circuit_params.choice == 'HEA_RIGETTI':
@@ -388,6 +425,117 @@ def add_layer_QAOA_RIGETTI(qc, G, theta):
     
     return qc
 
+def add_layer_qaoa(qc, G, theta, use_native_gates:bool):
+    """
+    **Inspired from qiskit tutorials**
+    Adds a layer of qaoa unitaries to a circuit
+    
+    Args:  
+        qc: qiskit circuit
+        G: networkx graph
+        theta: list
+               unitary parameters (2-element list)
+                     
+    Returns:
+        qc: qiskit circuit
+    """
+    
+    nqubits = len(G.nodes())
+    p = len(theta)//2  # number of alternating unitaries
+    
+    beta = theta[:p]
+    gamma = theta[p:]
+
+    # problem unitary
+    for pair in list(G.edges()):
+        if use_native_gates:
+            apply_rzz_native(qc, 2 * gamma[0], pair[0], pair[1])
+        else:
+            qc.rzz(2 * gamma[0], pair[0], pair[1])
+   
+    qc.barrier()
+
+    # mixer unitary
+    for i in range(0, nqubits):
+        qc.rx(2 * beta[0], i)
+    qc.barrier()
+    
+    return qc
+
+def add_layer_IONQ_VQC (qc, num_qubits, params):
+    """
+    This functions adds a new layer to random circuit qc 
+    (where num_qubits is the width of the quantum circuit
+    and params a np.array of 2*num_qubits angles in [0,2\pi)]).
+    IONQ hardware-efficient VQA ansatz
+    """
+    for i in range(num_qubits):
+        t = round(params[i]/(2*np.pi), 3)
+        qc.append(GPIGate(t), [i])
+    for k in range(num_qubits):
+        t = round(params[k+num_qubits]/(2*np.pi), 3)
+        qc.append(GPI2Gate(t), [k])
+    for g in range(2):
+        for f in range(g, num_qubits-1, 2):
+            qc.append(MSGate(0,0), [f, f+1])
+    qc.barrier()
+    return(qc)
+
+def add_layer_VQC (qc, num_qubits, params):
+    """
+    This functions adds a new layer to random circuit qc 
+    (where num_qubits is the width of the quantum circuit
+    and params a np.array of 2*num_qubits angles in [0,2\pi)]).
+    """
+    print (params)
+    # X rotation layer with random params
+    for i in range(num_qubits):
+        print (i)
+        qc.rx(params[i], i) 
+    # Y rotation layer with random params
+    for k in range(num_qubits):
+            qc.ry(params[k+num_qubits], k)
+    # 2 layers of nearest neighbour CZ gates
+    for g in range(2):
+        for f in range(g, num_qubits-1, 2):
+            qc.cz(f,f+1)
+    # Barrier function prevents compiler changing circuit structure
+    qc.barrier()
+    #print(qc) # visualise quantum circuit
+    return (qc)
+
+def add_layer_VQC_rx_only (qc, num_qubits, params):
+    """
+    This functions adds a new layer to random circuit qc 
+    (where num_qubits is the width of the quantum circuit
+    and params a np.array of 2*num_qubits angles in [0,2\pi)]).
+    """
+    # X rotation layer with random params
+    for i in range(num_qubits):
+        qc.rx(params[i], i)
+    # 2 layers of nearest neighbour CZ gates
+    for g in range(2):
+        for f in range(g, num_qubits-1, 2):
+            qc.cz(f,f+1)
+    # Barrier function prevents compiler changing circuit structure
+    qc.barrier()
+    #print(qc) # visualise quantum circuit
+    return (qc)
+
+def VQC_Unit(num_qubits, depth, angles, rx_only:bool):
+    """
+    This function generates a randomised (parameterised) quantum circuit
+     with depth depth and width num_qubits, and parameters params
+    """
+    qc = QuantumCircuit(num_qubits)
+    #print('params = ', params)
+    for dep in range(depth):
+        if rx_only:
+            qc = add_layer_VQC_rx_only(qc, num_qubits, angles[dep])
+        else:
+            qc = add_layer_VQC(qc, num_qubits, angles[dep])
+    return qc
+
 def apply_Pauli_meas_unit (qc, num_qubits, unit_index, backend):
     """
     Applies a unitary made of single-qubit unitaries (described by uni_index) corresponding to
@@ -435,3 +583,24 @@ def measure_Zbasis (qc, K, backend, initial_layout, verbose=False, IONQ=False):
     counts = result.get_counts()
     return (counts)
 
+def apply_hadamard_native(qc, q0):
+    """
+    applies hadamard gate decomposed into Rigetti's native gates RX and RZ
+    """
+    qc.rx(np.pi/2, q0)
+    qc.rz(np.pi/2, q0)
+    qc.rx(np.pi/2, q0)
+    return
+
+def apply_rzz_native(qc, theta, q0, q1):
+    """
+    applies rzz gate decomposed into Rigetti's native gates (RX, RZ, CZ)
+    """
+    apply_hadamard_native(qc, q1)
+    qc.cz(q0, q1)
+    apply_hadamard_native(qc, q1)
+    qc.rz(theta, q1)
+    apply_hadamard_native(qc, q1)
+    qc.cz(q0, q1)
+    apply_hadamard_native(qc, q1)
+    return

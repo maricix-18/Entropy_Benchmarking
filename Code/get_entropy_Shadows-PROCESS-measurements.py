@@ -14,8 +14,9 @@ import numpy as np
 
 from libIO import get_experiment_fullfilename, dump_to_json
 from libUtils import make_time_stamp
-from libQC import NoiseParams, CircuitParams3Qbits, BackendParams
-from libShadows import get_and_save_measurements_circuit_CS, CSParams
+from libQC import NoiseParams, CircuitParams3Qbits, BackendParams, CircuitParams5Qbits
+from libShadows import CSParams
+from libCircuitMeasures import get_and_save_circuit_measurements
 from libExperiment import ExperimentParams
 
 def build_parser (description):
@@ -41,10 +42,12 @@ backend_params = BackendParams('Aer_sim')
 circuit_params = CircuitParams3Qbits(choice='HEA_RIGETTI', depth_max=15)
 
 # Noise model
-noise_params = NoiseParams(p_DP1 = 0.01, p_DP2=0.1, p_AD1=0, p_AD2=0, p_meas=[[1, 0], [0, 1]])
+# noise_params = NoiseParams(p_DP1 = 0.01, p_DP2=0.1, p_AD1=0, p_AD2=0, p_meas=[[1, 0], [0, 1]])
+noise_params = NoiseParams()
+# noise_params.p_meas = [[1-0.022, 0.022], [0.035, 1-0.035]] 
 
 # Classical shadows
-CS_params = CSParams(num_samples=3, num_groups=1, M=50, K=1000, protocol_choice='randomized')
+CS_params = CSParams(num_samples=3, num_groups=5, M=320, K=1000, protocol_choice='randomized')
 
 # Create experiment
 experiment_params = ExperimentParams(backend_params, circuit_params, noise_params, CS_params, seed, make_time_stamp())
@@ -52,7 +55,7 @@ experiment_params.results_dir = resultdir
 
 # ==================================================================
 # Get measurement outcomes and save them to csv file
-experiment_params = get_and_save_measurements_circuit_CS(experiment_params, verbose=False)
+experiment_params = get_and_save_circuit_measurements(experiment_params, verbose=False)
 
 # Save experiment
 jsonfilename = get_experiment_fullfilename(experiment_params)

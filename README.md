@@ -4,7 +4,7 @@ Analysing the accumulation of Renyi-2 entropy density due to noise in quantum ci
 ## Example code output
 Classical simulation of the Renyi-2 entropy density evolution of a 3-qubit hardware-efficient ansatz circuit under local depolarizing noise using the classical shadows protocol for entropy estimation.
 
-![Hardware-efficient circuit under local depolarising noise using Shadows](https://github.com/MDemarty/Entropy_Benchmarking/blob/main/readme_figures/R2d-D0-15-1_M50_K1000_grps1_spls3_DP0.01-0.1_AD0-0_meas0-0_random.png)
+![Hardware-efficient circuit under local depolarising noise using Shadows](https://github.com/MDemarty/Entropy_Benchmarking/blob/main/readme_figures/R2d-D0-15-1_M320_K1000_grps5_spls3_random_DP0.008-0.054_AD0-0_meas0-0.png)
 
 ## Corresponding article
 This is the code used in relation to the article [Entropy Density Benchmarking of Near-Term Quantum Circuits](https://doi.org/10.48550/arXiv.2412.18007) by <ins>Marine Demarty</ins>, James Mills, Kenza Hammam and Raul Garcia-Patron.
@@ -46,12 +46,19 @@ In addition to those protocols, it is possible to run a density matrix simulatio
 ### Setup
 `myqiskitenv.yml` contains all necessary dependencies for running this code.
 
-### Workflow
+### Workflow for using the entropy toolbox
 To obtain the Renyi-2 entopy density evolution using a specific protocol as a function of circuit depth, one needs to run 3 scripts for Shadows or SWAP from the `Code` folder:
 - `get_entropy_[protocol]-PROCESS-measurements.py` is used to prepare the output of the target quantum circuit, add the measurement circuit of the specified protocol, and collect measurement outcomes. Those are stored in a csv file.
-- `get_entropy_[protocol]-PROCESS-metrics.py` loads the csv file, then implements the classical post-processing of the specified protocol to obtain a Renyi-2 entropy density estimate. This is stored in a json file.
-- `get_entropy_[protocol]-PLOT.py` loads the json file, then plots the corresponding entropy density evolution as a function of circuit depth and saves plots in the chosen results folder.
+- `get_entropy_PROCESS-metrics.py` loads the csv file, then implements the classical post-processing of the specified protocol to obtain a Renyi-2 entropy density estimate. This is stored in a json file.
+- `get_entropy_PLOT.py` loads the json file, then plots the corresponding entropy density evolution as a function of circuit depth and saves plots in the chosen results folder.
 
 and only 2 scripts for DensMat:
 - `get_entropy_[protocol]-PROCESS-metrics.py`is used to prepare the output of the target quantum circuit under some noise model, and obtain its exact Renyi-2 entropy density. This is stored in a json file.
 - `get_entropy_[protocol]-PLOT.py` loads the json file, then plots the corresponding entropy density evolution as a function of circuit depth and saves plots in the chosen results folder.
+
+# Workflow for obtaining the plots from our paper
+Each script of the form `PAPER....py` corresponds to a single figure from our paper. Figures may be obtained by 
+- either moving the `results` folder (simulation and experimental data) to `C:/` or to your chosen location,
+- and editing each `PAPER....py` script appropriately to reflect the path change,
+- then running each script.
+Resulting pictures are saved in a `Paper` folder by default.

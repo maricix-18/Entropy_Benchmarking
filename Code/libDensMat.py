@@ -4,8 +4,9 @@ Useful functions to perform density matrix simulations
 import numpy as np
 from qiskit.quantum_info import purity, entropy
 
-from libQC import Metrics, init_circuit, add_circuit_layer
-from libQC import define_gates, define_backend, BackendParams
+from libQC import init_circuit, add_circuit_layer
+from libQC import define_gates, define_backend
+from libMetric import Metrics
 
 def get_output_density_matrix(qc, backend):
     """
@@ -82,3 +83,4 @@ def get_metrics_DensMat(experiment_params):
         metrics['all_R2d_diff_n'].append(all_R2d)
 
     return metrics
+

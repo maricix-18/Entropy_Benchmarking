@@ -10,13 +10,11 @@ import time
 from qiskit.quantum_info import DensityMatrix
 #from qiskit_rigetti import RigettiQCSProvider
 
-from libIO import init_csv_file, read_df_from_csv
-from libQC import Metrics, CircuitParams3Qbits, ProtocolParams
-from libQC import apply_Pauli_meas_unit, measure_Zbasis, define_gates, init_circuit, add_circuit_layer, define_backend
-from libUtils import ternary_list_to_decimal, compute_stats, renyi_entropy_from_purity
-
+from libUtils import ternary_list_to_decimal, renyi_entropy_from_purity, get_dataframe_specific_depth
+from libQC import ProtocolParams, apply_Pauli_meas_unit, measure_Zbasis
 
 # Global variables ===================================================================
+
 # --- Build beta values with all possible results for (9 times) norm squared of complex number (minus 4) in expression 
 # for purity estimate where keys are the different pairs possible for the two unitaries in the expression and
 # elements are the value beta of (9 times) norm squared (minus 4) when the two output states are equal (1st element) or different
@@ -33,6 +31,7 @@ for i in range(3): #i=0/1/2 corresponds to H/HSdag/Id
             beta_values[pair] = [5, -4]#[1, 0] #the first (resp. second) element corresponds to two identical (resp. different) outcomes
 
 # Classes ==========================================================================
+
 class CSParams(ProtocolParams):
     def __init__(self, num_samples, num_groups, M, K, protocol_choice='randomized', artif_randomized=None):
         self.name = 'CS'
@@ -46,35 +45,8 @@ class CSParams(ProtocolParams):
     def from_dict(temp):
         return CSParams(temp['num_samples'], temp['num_groups'], temp['M'], temp['K'], temp['protocol_choice'], temp['artif_randomized'])
     
-# Functions ==========================================================================
-def get_df_specific_depth_from_df(df, wanted_depth_index):
-    sub_df = df.loc[ df ["depth_index"] == wanted_depth_index]
-    #print("sub dataframe: \n", sub_df)
-    if sub_df.empty:
-        print("Please check the wanted_depth_index as it is not in the original dataframe df.")
-        return (None)
-    return (sub_df)
 
-def extract_shadow_element_from_df(original_df, wanted_depth_index, sample_index, measurement_setting_index, verbose=False):
-    df_fixed_depth = get_df_specific_depth_from_df(original_df, wanted_depth_index)  
-    df_fixed_depth_sample = df_fixed_depth.iloc[sample_index]
-    if verbose:
-        print("\n WANTED DEPTH INDEX: ", wanted_depth_index)
-        print("\n WANTED MEASUREMENT SETTING INDEX: ", measurement_setting_index)
-        # print("\n df_fixed_depth_sample: \n", df_fixed_depth_sample)
-    shadow_element = df_fixed_depth_sample.T[1+measurement_setting_index] #the first column is not shadows (depth_index)
-    if verbose:
-        print("checking shadow element to see if as expected \n", shadow_element)
-    shadow_element = eval(shadow_element.replace("array", "np.array"))
-    if verbose:
-        print("final shadow element \n", shadow_element)
-    return(shadow_element)
-
-def extract_shadows_from_df(df, depth_index, sample_index, M, verbose=False):
-    shadows = np.zeros(M, dtype=object)
-    for m in range(M):
-        shadows[m] = extract_shadow_element_from_df(df, depth_index, sample_index, m, verbose=verbose)
-    return (shadows)
+# Functions To Get Measurements ====================================================
 
 def extract_Pauli_shadows(rho_out:DensityMatrix, num_qubits:int, M:int, K:int):
     """ returns a list of classical shadows obtained from applying Pauli measurements on the density matrix rho_out
@@ -132,6 +104,89 @@ def extract_Pauli_shadows_circuit(qc, M, K, num_qubits, backend, initial_layout,
         qc = qc_copy.copy("qc") #quantum circuit before the random unitary was applied
         if verbose: print('Quantum circuit qc after removing measurement and random unitary : \n \n', qc)
     return (shadow_list, qc)
+
+def get_circuit_measurements_per_depth_CS(depth, num_qubits, qc, protocol_params, backend, backend_params, fullfilename, verbose=False):
+    """
+    Gets and saves to a csv file the measurement outcomes of a set of random Pauli basis measurements applied to a noisy circuit
+    with K shots per random measurement and M random measurements. This set of measurements is run num_samples times.
+    """
+
+    for _ in range(protocol_params.num_samples):
+        # Extract Pauli shadows
+        shadow_full_list, qc = extract_Pauli_shadows_circuit(qc, protocol_params.M, protocol_params.K, num_qubits, backend, backend_params.initial_layout, protocol_params.protocol_choice, verbose=verbose)
+        print("Pauli shadows extracted successfully.")
+        # Save results to csv file
+        df = pd.DataFrame([depth] + shadow_full_list).T
+        df.to_csv(fullfilename, mode='a', index=False, header=False)
+        print("Data saved to csv successfully.")
+
+
+# Functions To Get Metrics ====================================================
+
+def extract_shadow_element_from_df(original_df, wanted_depth_index, sample_index, measurement_setting_index, verbose=False):
+    df_fixed_depth = get_dataframe_specific_depth(original_df, wanted_depth_index)  
+    df_fixed_depth_sample = df_fixed_depth.iloc[sample_index]
+    if verbose:
+        print("\n WANTED DEPTH INDEX: ", wanted_depth_index)
+        print("\n WANTED MEASUREMENT SETTING INDEX: ", measurement_setting_index)
+        # print("\n df_fixed_depth_sample: \n", df_fixed_depth_sample)
+        
+    shadow_element = df_fixed_depth_sample.T[1+measurement_setting_index] #the first column is not shadows (depth_index)
+    if verbose:
+        print("checking shadow element to see if as expected \n", shadow_element)
+    shadow_element = eval(shadow_element.replace("array", "np.array"))
+    if verbose:
+        print("final shadow element \n", shadow_element)
+    return(shadow_element)
+
+def extract_shadows_from_df(df, depth_index, sample_index, M, verbose=False):
+    shadows = np.zeros(M, dtype=object)
+    for m in range(M):
+        shadows[m] = extract_shadow_element_from_df(df, depth_index, sample_index, m, verbose=verbose)
+    return (shadows)
+
+def get_artif1_randomized_shadow_full_list(derand_shadow_full_list, M, num_qubits):
+    """
+    Returns a shadow_full_list for any number M of random unitaries (or measurement settings) obtained from the derandomized shadow_full_list (with 3**num_qubits measurement settings) 
+    by copy pasting each given derand shadow the number of times the measurement setting is repeated in the new shadow_full_list.
+    """
+    shadow_full_list = np.zeros(M, dtype=object)
+    for i in range(M):
+        unit_index = np.random.randint(3, size=num_qubits) # description of random unitary to be applied to output state before measurement (0 = X meas, 1 = Y meas, 2 = Z meas)
+        index = ternary_list_to_decimal(unit_index) # convert unit_index to index
+        corresponding_shadow = derand_shadow_full_list[index]
+        counts = corresponding_shadow[1]
+        shadow_full_list[i]=[unit_index, counts]
+    return shadow_full_list
+
+#print(get_artif1_randomized_shadow_full_list([[[0],{'0':1, '1':6}],[[1],{'0':5, '1':2}],[[2],{'0':0, '1':7}]], 5, 1))
+
+def get_artif2_randomized_shadow_full_list(derand_shadow_full_list_sample_1, derand_shadow_full_list_sample_2, derand_shadow_full_list_sample_3, M, num_qubits, verbose=False):
+    """
+    Returns a shadow_full_list for any number M of random unitaries (or measurement settings) obtained from the derandomized shadow_full_list (with 3**num_qubits measurement settings) 
+    by taking each given derand shadow the number of times the measurement setting is repeated in the new shadow_full_list (exploiting the 3 different samples for that).
+    """
+    shadow_full_list = np.zeros(M, dtype=object)
+    num_occurences = np.zeros(3**num_qubits) # number of occurences of each measurement setting
+    for i in range(M):
+        unit_index = np.random.randint(3, size=num_qubits) # description of random unitary to be applied to output state before measurement (0 = X meas, 1 = Y meas, 2 = Z meas)
+        index = ternary_list_to_decimal(unit_index) # convert unit_index to index
+        nb_occurences = num_occurences[index] #so far
+        if nb_occurences%3 == 0:
+            corresponding_shadow = derand_shadow_full_list_sample_1[index]
+        elif nb_occurences%3 == 1:
+            corresponding_shadow = derand_shadow_full_list_sample_2[index]
+        elif nb_occurences%3 == 2:
+            corresponding_shadow = derand_shadow_full_list_sample_3[index]
+        counts = corresponding_shadow[1]
+        shadow_full_list[i]=[unit_index, counts] #np.array([unit_index, counts])
+        num_occurences[index] = nb_occurences + 1
+    if verbose: print("\n CHECK num_occurences: ", num_occurences)
+    return shadow_full_list
+
+# print(get_artif2_randomized_shadow_full_list([[[0],{'0':1, '1':6}],[[1],{'0':5, '1':2}],[[2],{'0':0, '1':7}]],
+#                                             [[[0],{'0':2, '1':5}],[[1],{'0':6, '1':1}],[[2],{'0':1, '1':6}]], 
+#                                             [[[0],{'0':0, '1':7}],[[1],{'0':4, '1':3}],[[2],{'0':2, '1':5}]], 5, 1, verbose=True))
 
 def estimate_purity_from_Pauli_shadows(shadow_full_list, num_qubits:int, CS_params:CSParams, circuit_bool:bool, verbose=False):
     """with median of means (MOM)
@@ -214,218 +269,65 @@ def estimate_purity_from_Pauli_shadows(shadow_full_list, num_qubits:int, CS_para
     mom = np.median(means)
     return(mom)
 
-def get_artif1_randomized_shadow_full_list(derand_shadow_full_list, M, num_qubits):
+def compute_metrics_per_depth_CS (df, depth, num_qubits, CS_params, verbose=False):
     """
-    Returns a shadow_full_list for any number M of random unitaries (or measurement settings) obtained from the derandomized shadow_full_list (with 3**num_qubits measurement settings) 
-    by copy pasting each given derand shadow the number of times the measurement setting is repeated in the new shadow_full_list.
-    """
-    shadow_full_list = np.zeros(M, dtype=object)
-    for i in range(M):
-        unit_index = np.random.randint(3, size=num_qubits) # description of random unitary to be applied to output state before measurement (0 = X meas, 1 = Y meas, 2 = Z meas)
-        index = ternary_list_to_decimal(unit_index) # convert unit_index to index
-        corresponding_shadow = derand_shadow_full_list[index]
-        counts = corresponding_shadow[1]
-        shadow_full_list[i]=[unit_index, counts]
-    return shadow_full_list
+    Returns purity metric.
 
-#print(get_artif1_randomized_shadow_full_list([[[0],{'0':1, '1':6}],[[1],{'0':5, '1':2}],[[2],{'0':0, '1':7}]], 5, 1))
-
-def get_artif2_randomized_shadow_full_list(derand_shadow_full_list_sample_1, derand_shadow_full_list_sample_2, derand_shadow_full_list_sample_3, M, num_qubits, verbose=False):
-    """
-    Returns a shadow_full_list for any number M of random unitaries (or measurement settings) obtained from the derandomized shadow_full_list (with 3**num_qubits measurement settings) 
-    by taking each given derand shadow the number of times the measurement setting is repeated in the new shadow_full_list (exploiting the 3 different samples for that).
-    """
-    shadow_full_list = np.zeros(M, dtype=object)
-    num_occurences = np.zeros(3**num_qubits) # number of occurences of each measurement setting
-    for i in range(M):
-        unit_index = np.random.randint(3, size=num_qubits) # description of random unitary to be applied to output state before measurement (0 = X meas, 1 = Y meas, 2 = Z meas)
-        index = ternary_list_to_decimal(unit_index) # convert unit_index to index
-        nb_occurences = num_occurences[index] #so far
-        if nb_occurences%3 == 0:
-            corresponding_shadow = derand_shadow_full_list_sample_1[index]
-        elif nb_occurences%3 == 1:
-            corresponding_shadow = derand_shadow_full_list_sample_2[index]
-        elif nb_occurences%3 == 2:
-            corresponding_shadow = derand_shadow_full_list_sample_3[index]
-        counts = corresponding_shadow[1]
-        shadow_full_list[i]=np.array([unit_index, counts])
-        num_occurences[index] = nb_occurences + 1
-    if verbose: print("\n CHECK num_occurences: ", num_occurences)
-    return shadow_full_list
-
-# print(get_artif2_randomized_shadow_full_list([[[0],{'0':1, '1':6}],[[1],{'0':5, '1':2}],[[2],{'0':0, '1':7}]],
-#                                             [[[0],{'0':2, '1':5}],[[1],{'0':6, '1':1}],[[2],{'0':1, '1':6}]], 
-#                                             [[[0],{'0':0, '1':7}],[[1],{'0':4, '1':3}],[[2],{'0':2, '1':5}]], 5, 1, verbose=True))
-
-
-def get_and_save_measurements_circuit_CS(experiment_params, verbose=False):
-    """
-    Gets and saves to a csv file the measurement outcomes of a set of random Pauli basis measurements applied to a noisy circuit
-    with K shots per random measurement and M random measurements. This set of measurements is run num_samples times.
-    """
-    circuit_params = experiment_params.circuit_params
-
-    # Backend
-    gates_1Q, gates_2Q = define_gates(circuit_params.choice, 'CS')
-    basis_gates = [gates_1Q, gates_2Q]
-    backend = define_backend(experiment_params.backend_params, experiment_params.noise_params, basis_gates)
-
-    # ==================================================================
-
-    for num_qubits in range(circuit_params.num_qubits_min, circuit_params.num_qubits_max+1):
-        print('\n=========> num qubits = ', num_qubits)
-
-        start = time.time()
-
-        fullfilename = init_csv_file(experiment_params, num_qubits)
-        experiment_params.csv_files[str(num_qubits)] = fullfilename
-        # ------------------------------------------------------------------
-        
-        #Initialise circuit
-        qc = init_circuit(circuit_params, num_qubits)
-
-        for depth_index in range(circuit_params.depth_min, circuit_params.depth_max+1, circuit_params.depth_step):
-            print("depth : ", depth_index)
-            # Build parameterised quantum circuit with depth "depth_index" by adding depth_step layers to previous circuit
-            if depth_index>circuit_params.depth_min:
-                for index in range(circuit_params.depth_step):
-                    qc = add_circuit_layer(circuit_params, num_qubits, qc, depth_index - 1 + index)
-
-            for _ in range(experiment_params.protocol_params.num_samples):
-                # Extract Pauli shadows
-                shadow_full_list, qc = extract_Pauli_shadows_circuit(qc, experiment_params.protocol_params.M, experiment_params.protocol_params.K, num_qubits, backend, experiment_params.backend_params.initial_layout, experiment_params.protocol_params.protocol_choice, verbose=verbose)
-                print("Pauli shadows extracted successfully.")
-
-                # Save results to csv file
-                df = pd.DataFrame([depth_index] + shadow_full_list).T
-                df.to_csv(fullfilename, mode='a', index=False, header=False)
-                print("Data saved to csv successfully.")
-                                 
-        # Runtime
-        elapsed_time = time.time() - start
-        if verbose: print("\n", "Elapsed time in seconds: ", elapsed_time)
-    
-    return experiment_params
-
-def compute_metrics_from_csv_circuit_CS(experiment_params, verbose = False):
-    """
-    Returns data in the form of the purity of the output state of noisy (local depolarising noise - single-qubit gate dep proba p_DP1, 
-    and two-qubit gate dep proba p_DP2) circuit of a family given by circuit_choice, for width between num_qubits_min and num_qubits_max, 
-    for depth between 0 and depth max with step depth_step.
-    The purity is obtained using so-called classical shadows protocol (type of protocol given
-    by CS_protocol_choice), with K shots per random measurement and M random measurements; shadows are grouped into num_groups
-    to compute the median of means; and the CS protocol is run num_samples times to get error bars).
+    The purity is obtained using so-called classical shadows protocol, with K shots per random measurement and M random measurements.
+    Shadows are grouped into num_groups to compute the median of means; and the CS protocol is run num_samples times to get error bars.
     
     NOTE if CS_params.artif_randomized == 'artif1' or CS_params.artif_randomized == 'artif2', then the csv file considered has
     to be obtained from the derandomized protocol over M=3**num_qubits meas settings and with num_samples=3; moreover num_samples of the
-      resulting metrics is imposed (3 in the first case and 1 in the second case)
+      resulting metrics is fixed to 3 in the first case and 1 in the second case
     """
-    # ==================================================================
-    metrics = Metrics(['all_pur_mean_diff_n', 'all_pur_std_diff_n', 'all_R2d_mean_diff_n', 'all_R2d_std_diff_n'])
+    pur_samples, R2d_samples = [], []
 
-    circuit_params = experiment_params.circuit_params
-    CS_params = experiment_params.protocol_params
-
-    for num_qubits in range(circuit_params.num_qubits_min, circuit_params.num_qubits_max+1):
-        print('\n==========> num qubits = ', num_qubits)
+    if CS_params.artif_randomized == 'artif2':
+        temp_shadow_full_list_sample_1 = extract_shadows_from_df(df, depth, 0, 27, verbose=verbose)
+        temp_shadow_full_list_sample_2 = extract_shadows_from_df(df, depth, 1, 27, verbose=verbose)
+        temp_shadow_full_list_sample_3 = extract_shadows_from_df(df, depth, 2, 27, verbose=verbose)
         
-        # GET DATAFRAME
-        if CS_params.artif_randomized == 'artif1' or CS_params.artif_randomized == 'artif2':
-            experiment_params2 = experiment_params
-            experiment_params2.circuit_params = CircuitParams3Qbits(circuit_params.choice, depth_max=circuit_params.depth_max)
-            experiment_params2.protocol_params = CSParams(num_samples=3, num_groups=1, M=27, K=1000, protocol_choice='derandomized')
+        shadow_full_list = get_artif2_randomized_shadow_full_list(temp_shadow_full_list_sample_1, temp_shadow_full_list_sample_2, temp_shadow_full_list_sample_3, CS_params.M, num_qubits, verbose=verbose)
 
-            df = read_df_from_csv(experiment_params2, num_qubits)
+        # Estimate metrics from the classical shadows
+        start_pur = time.time()
+        pur = estimate_purity_from_Pauli_shadows(shadow_full_list, num_qubits, CS_params, True)
+        if verbose:
+            print("this is the purity : ", pur)
+            print("TIME ===== Purity calculation: ", time.time() - start_pur)
+
+        R2d = renyi_entropy_from_purity(pur)/num_qubits
+        if verbose: print("Estimate computed successfully.")
         
-        else:
-            df = read_df_from_csv(experiment_params, num_qubits)
-           
-        if df.empty:
-            if verbose: print("The original dataframe df is empty.")
-            return (None, None, None, None)            
+        # Add estimates to lists of samples
+        pur_samples.append(pur)
+        R2d_samples.append(R2d)
+    else:
+        for sample_index in range(CS_params.num_samples):
+            # Extract Pauli shadows
+            # start_extract_shadows = time.time()
+            if CS_params.artif_randomized == 'artif1':
+                temp_shadow_full_list = extract_shadows_from_df(df, depth, sample_index, 27, verbose=verbose)
 
-        start = time.time()
+                shadow_full_list = get_artif1_randomized_shadow_full_list(temp_shadow_full_list, CS_params.M, num_qubits)
 
-        # ------------------------------------------------------------------
-
-        # Lists to store metrics for different depths
-        pur_mean_results, R2d_mean_results = [], []
-        pur_std_results, R2d_std_results = [], []
-
-        for depth_index in range(circuit_params.depth_min, circuit_params.depth_max+1, circuit_params.depth_step):
-            print("depth : ", depth_index)
-            
-            pur_samples, R2d_samples = [], []
-            start_depth = time.time()
-
-            if CS_params.artif_randomized == 'artif2':
-                temp_shadow_full_list_sample_1 = extract_shadows_from_df(df, depth_index, 0, 27, verbose=verbose)
-                temp_shadow_full_list_sample_2 = extract_shadows_from_df(df, depth_index, 1, 27, verbose=verbose)
-                temp_shadow_full_list_sample_3 = extract_shadows_from_df(df, depth_index, 2, 27, verbose=verbose)
-                shadow_full_list = get_artif2_randomized_shadow_full_list(temp_shadow_full_list_sample_1, temp_shadow_full_list_sample_2, temp_shadow_full_list_sample_3, CS_params.M, num_qubits, verbose=verbose)
-
-                # Estimate metrics from the classical shadows
-                start_pur = time.time()
-                pur = estimate_purity_from_Pauli_shadows(shadow_full_list, num_qubits, CS_params, True)
-                if verbose:
-                    print("this is the purity : ", pur)
-                    print("TIME ===== Purity calculation: ", time.time() - start_pur)
-
-                R2d = renyi_entropy_from_purity(pur)/num_qubits
-                if verbose: print("Estimate computed successfully.")
-                
-                # Add estimates to lists of samples
-                pur_samples.append(pur)
-                R2d_samples.append(R2d)
             else:
-                for sample_index in range(CS_params.num_samples):
-                    # Extract Pauli shadows
-                    # start_extract_shadows = time.time()
-                    if CS_params.artif_randomized == 'artif1':
-                        temp_shadow_full_list = extract_shadows_from_df(df, depth_index, sample_index, 27, verbose=verbose)
-    
-                        shadow_full_list = get_artif1_randomized_shadow_full_list(temp_shadow_full_list, CS_params.M, num_qubits)
+                shadow_full_list = extract_shadows_from_df(df, depth, sample_index, CS_params.M, verbose=verbose)
 
-                    else:
-                        shadow_full_list = extract_shadows_from_df(df, depth_index, sample_index, CS_params.M, verbose=verbose)
+            # print("\n TIME ===== Extracting shadows: ", time.time() - start_extract_shadows)
+            print("Pauli shadows read successfully.")            
+            
+            # Estimate metrics from the classical shadows
+            start_pur = time.time()
+            pur = estimate_purity_from_Pauli_shadows(shadow_full_list, num_qubits, CS_params, True)
+            if verbose: 
+                print("this is the purity : ", pur)
+                print("TIME ===== Purity calculation: ", time.time() - start_pur)
 
-                    # print("\n TIME ===== Extracting shadows: ", time.time() - start_extract_shadows)
-                    print("Pauli shadows read successfully.")            
-                    
-                    # Estimate metrics from the classical shadows
-                    start_pur = time.time()
-                    pur = estimate_purity_from_Pauli_shadows(shadow_full_list, num_qubits, CS_params, True)
-                    if verbose: 
-                        print("this is the purity : ", pur)
-                        print("TIME ===== Purity calculation: ", time.time() - start_pur)
+            R2d = renyi_entropy_from_purity(pur)/num_qubits
+            print("Estimate computed successfully.")
+            
+            pur_samples.append(pur)
+            R2d_samples.append(R2d)
 
-                    R2d = renyi_entropy_from_purity(pur)/num_qubits
-                    print("Estimate computed successfully.")
-                    
-                    pur_samples.append(pur)
-                    R2d_samples.append(R2d)
-            if verbose: print("\n TIME depth (min)", round((time.time() - start_depth)/60,1))
-            # Compute mean and stdv
-            pur_mean, pur_std = compute_stats(pur_samples)
-            R2d_mean, R2d_std = compute_stats(R2d_samples)
-
-            # Save metrics mean and standard deviation
-            pur_mean_results.append(pur_mean)
-            pur_std_results.append(pur_std)
-            R2d_mean_results.append(R2d_mean)
-            R2d_std_results.append(R2d_std)
-
-        # Save circuit sim results to larger lists
-        metrics['all_pur_mean_diff_n'].append(pur_mean_results)
-        metrics['all_R2d_mean_diff_n'].append(R2d_mean_results)
-        metrics['all_pur_std_diff_n'].append(pur_std_results)
-        metrics['all_R2d_std_diff_n'].append(R2d_std_results)
-        
-        # Runtime
-        elapsed_time = time.time() - start
-        elapsed_time_min = int(elapsed_time/60)
-        if verbose: 
-            print("\n", "Elapsed time in seconds: ", elapsed_time)
-            print("\n", "Elapsed time in minutes: ", elapsed_time_min)
-    
-    return metrics
+    return pur_samples, R2d_samples
