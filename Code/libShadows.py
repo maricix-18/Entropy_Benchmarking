@@ -74,7 +74,7 @@ def extract_Pauli_shadows(rho_out:DensityMatrix, num_qubits:int, M:int, K:int):
     print("Shadows extracted successfully")
     return(shadow_list)
 
-def extract_Pauli_shadows_circuit(qc, M, K, num_qubits, backend, initial_layout, CS_protocol_choice, verbose=False):
+def extract_Pauli_shadows_circuit(qc, M, K, num_qubits, backend, initial_layout, CS_protocol_choice, depth, verbose=False):
     """
     This function fills in and returns a list shadow_list with
     1) the description of a random unitary (for the randomized measurement performed)
@@ -98,7 +98,7 @@ def extract_Pauli_shadows_circuit(qc, M, K, num_qubits, backend, initial_layout,
         qc = apply_Pauli_meas_unit(qc, num_qubits, unit_index, backend)
         if verbose: print("\n 1. Unit index: ", unit_index)
         # Perform K measurements (and store outcomes/counts in a dictionary)
-        counts = measure_Zbasis (qc, K, backend, initial_layout, verbose=verbose)
+        counts = measure_Zbasis (qc, K, backend, initial_layout, depth, verbose=verbose)
         shadow_list.append([unit_index, counts])
         if verbose: print('\n 2. Quantum circuit qc before removing measurement and random unitary : \n \n', qc)
         qc = qc_copy.copy("qc") #quantum circuit before the random unitary was applied
@@ -113,7 +113,7 @@ def get_circuit_measurements_per_depth_CS(depth, num_qubits, qc, protocol_params
 
     for _ in range(protocol_params.num_samples):
         # Extract Pauli shadows
-        shadow_full_list, qc = extract_Pauli_shadows_circuit(qc, protocol_params.M, protocol_params.K, num_qubits, backend, backend_params.initial_layout, protocol_params.protocol_choice, verbose=verbose)
+        shadow_full_list, qc = extract_Pauli_shadows_circuit(qc, protocol_params.M, protocol_params.K, num_qubits, backend, backend_params.initial_layout, protocol_params.protocol_choice, depth, verbose=verbose)
         print("Pauli shadows extracted successfully.")
         # Save results to csv file
         df = pd.DataFrame([depth] + shadow_full_list).T

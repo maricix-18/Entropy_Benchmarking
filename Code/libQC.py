@@ -257,7 +257,8 @@ def define_backend(backend_params, noise_params, basis_gates=None):
         #NUMERICAL (CIRCUIT) SIMULATIONS
         gates_1Q, gates_2Q = basis_gates
         noise_model = build_noise_model(noise_params, gates_1Q, gates_2Q)
-        backend = AerSimulator(noise_model=noise_model)
+        #backend = AerSimulator(noise_model=noise_model)
+        backend = AerSimulator(method='density_matrix')
     elif backend_type == 'Rigetti_QPU':
         #RIGETTI QPU
         provider = RigettiQCSProvider()
@@ -556,7 +557,7 @@ def apply_Pauli_meas_unit (qc, num_qubits, unit_index, backend):
         # Z-basis measurement - identity matrix is applied
     return (qc)
 
-def measure_Zbasis (qc, K, backend, initial_layout, verbose=False, IONQ=False):
+def measure_Zbasis (qc, K, backend, initial_layout, depth, verbose=False, IONQ=False):
     """
     qc: a quantum circuit
     K: number of shots i.e. number of times we want to measure the quantum circuit qc
@@ -575,6 +576,17 @@ def measure_Zbasis (qc, K, backend, initial_layout, verbose=False, IONQ=False):
         job = backend.run(qc_copy, shots=K, error_mitigation=ErrorMitigation.NO_DEBIASING, initial_layout=initial_layout)
     else:
         job = backend.run(qc_copy, shots=K, initial_layout=initial_layout)
+        # SAVE density mat data for quest comparison
+        density_matrix = job.data()['density_matrix']
+        filename= "Qiskit_Shadows_DensMat_data_densmat/Qasm_qc_Q5_D"+str(depth)+".csv"
+        with open(filename, "w") as file:
+            dens_mat = np.array(density_matrix)
+            for row in dens_mat:
+                line = ", ".join(
+                    f"{val.real:+.8f}{val.imag:+.8f}i"  # Format: +0.12345678+0.12345678i
+                    for val in row
+                )
+                file.write(line + "\n")
     if verbose: 
         elapsed_time = time.time() - start_time
         print("=========================================")

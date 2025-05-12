@@ -58,6 +58,24 @@ def get_and_save_circuit_measurements(experiment_params, verbose=False):
                     qc = add_circuit_layer(circuit_params, num_qubits, qc, depth_index - 1 + index)
 
             get_circuit_measurements_per_depth(depth_index, num_qubits, qc, circuit_params, protocol_params, backend, backend_params, fullfilename, verbose=verbose)
+            # # for each depth size, save the circuit in qasm format
+            # dumped = qc.qasm()
+                
+            # filename= "Shadows_QASM_Q5_D15/Qasm_qc_Q5_D"+str(depth_index)+".txt"
+            # with open(filename, "w") as file:
+            #     file.write(dumped)      
+            #     # print("\n Quantum circuit \n", qc)
+             # SAVE density mat data for quest comparison
+            #density_matrix = DensityMatrix(qc.save_density_matrix())
+            filename= "QiskitDensMat_data_densmat/Qasm_qc_Q5_D"+str(depth_index)+".txt"
+            with open(filename, "w") as file:
+                dens_mat = np.array(density_matrix)
+                for row in dens_mat:
+                    line = ", ".join(
+                        f"{val.real:+.8f}{val.imag:+.8f}i"  # Format: +0.12345678+0.12345678i
+                        for val in row
+                    )
+                    file.write(line + "\n")
                                  
         # Runtime
         elapsed_time = time.time() - start

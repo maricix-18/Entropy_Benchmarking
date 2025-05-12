@@ -3,7 +3,7 @@ Useful functions to perform density matrix simulations
 """
 import numpy as np
 from qiskit.quantum_info import purity, entropy
-
+from qiskit import qasm
 from libQC import init_circuit, add_circuit_layer
 from libQC import define_gates, define_backend
 from libMetric import Metrics
@@ -42,15 +42,37 @@ def get_metrics_DensMat_single_width (backend, circuit_params, num_qubits):
         if depth_index>circuit_params.depth_min:
             for index in range(circuit_params.depth_step):
                 qc = add_circuit_layer(circuit_params, num_qubits, qc, depth_index - 1 + index)
-        # print("\n Quantum circuit \n", qc)
+        
+                # # for each depth size, save the circuit in qasm format
+                # dumped = qc.qasm()
+                
+                # filename= "Qasm_qc_Q5_D"+str(depth_index)+".txt"
+                # with open(filename, "w") as file:
+                #     file.write(dumped)      
+                # # print("\n Quantum circuit \n", qc)
 
         density_matrix = get_output_density_matrix(qc, backend)
+        # SAVE density mat data for quest comparison
+        # filename= "QiskitDensMat_data_densmat/Qasm_qc_Q5_D"+str(depth_index)+".txt"
+        # with open(filename, "w") as file:
+        #     dens_mat = np.array(density_matrix)
+        #     for row in dens_mat:
+        #         line = ", ".join(
+        #             f"{val.real:+.8f}{val.imag:+.8f}i"  # Format: +0.12345678+0.12345678i
+        #             for val in row
+        #         )
+        #         file.write(line + "\n")
 
         # Metrics
         vNd = entropy(density_matrix, base=2) / num_qubits
+        print("vNd : ",vNd)
+        print("type vNd:",type(vNd))
         pur = np.real(purity(density_matrix))
+        print("pur : ",pur)
+        print("type pur:",type(pur))
         R2d = -1 * np.log2(pur) / num_qubits
-
+        print("R2d : ",R2d)
+        print("type R2d:",type(R2d))
         all_vNd.append(vNd)
         all_pur.append(pur)
         all_R2d.append(R2d)  
@@ -81,6 +103,6 @@ def get_metrics_DensMat(experiment_params):
         metrics['all_vNd_diff_n'].append(all_vNd)
         metrics['all_pur_diff_n'].append(all_pur)
         metrics['all_R2d_diff_n'].append(all_R2d)
-
+        
     return metrics
 

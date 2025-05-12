@@ -143,7 +143,7 @@ def plot_metric_DensMat(metric, experiment_params, metrics, plot_dir, show_maxim
     xticks = compute_xticks(d, circuit_params.depth_step)
     plt.xticks(xticks)
     plt.ylabel(metric)
-    plt.ylim(0,1.1)
+    #plt.ylim(0,1.1)
     if save:
         filename = metric_short + '-' + get_prefix_num_qubits(circuit_params) + 'D' + str(circuit_params.depth_max) + '_' + get_base_noise(experiment_params) + '.pdf'
         plt.savefig(plot_dir + filename)
