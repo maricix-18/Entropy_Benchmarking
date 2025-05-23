@@ -34,7 +34,7 @@ np.random.seed(seed) #reference
 backend_params = BackendParams('Aer_sim')
 
 # Quantum circuit
-circuit_params = CircuitParams('HEA_RIGETTI', num_qubits_min = 5, num_qubits_max = 5, num_qubits_step=1, depth_min = 0, depth_max = 15)
+circuit_params = CircuitParams('HEA_RIGETTI', num_qubits_min = 2, num_qubits_max = 2, num_qubits_step=1, depth_min = 0, depth_max = 15)
 
 # Noise model
 noise_params = NoiseParams()

@@ -257,8 +257,8 @@ def define_backend(backend_params, noise_params, basis_gates=None):
         #NUMERICAL (CIRCUIT) SIMULATIONS
         gates_1Q, gates_2Q = basis_gates
         noise_model = build_noise_model(noise_params, gates_1Q, gates_2Q)
-        #backend = AerSimulator(noise_model=noise_model)
-        backend = AerSimulator(method='density_matrix')
+        backend = AerSimulator(noise_model=noise_model)
+        #backend = AerSimulator(method='density_matrix')
     elif backend_type == 'Rigetti_QPU':
         #RIGETTI QPU
         provider = RigettiQCSProvider()

@@ -2,11 +2,13 @@
 Useful functions to perform density matrix simulations
 """
 import numpy as np
-from qiskit.quantum_info import purity, entropy, DensityMatrix
+from qiskit.quantum_info import DensityMatrix
 from qiskit import qasm
 from libQC import init_circuit, add_circuit_layer
 from libQC import define_gates, define_backend
+from scipy.linalg import eigvalsh
 from libMetric import Metrics
+from qiskit.quantum_info.states.utils import shannon_entropy
 
 def read_matrix(filepath, num_qubits):
     dim = 2 ** num_qubits
@@ -38,6 +40,34 @@ def read_matrix(filepath, num_qubits):
 
     return matrix
 
+def entropy(state, base=2):
+    r"""Calculate the von-Neumann entropy of a quantum state.
+
+    The entropy :math:`S` is given by
+
+    .. math::
+
+        S(\rho) = - Tr[\rho \log(\rho)]
+
+    Args:
+        state (Statevector or DensityMatrix): a quantum state.
+        base (int): the base of the logarithm [Default: 2].
+
+    Returns:
+        float: The von-Neumann entropy S(rho).
+
+    Raises:
+        QiskitError: if the input state is not a valid QuantumState.
+    """
+    import scipy.linalg as la
+
+    # state = _format_state(state, validate=True)
+    # if isinstance(state, Statevector):
+    #     return 0
+    # Density matrix case
+    evals = np.maximum(np.real(la.eigvals(state.data)), 0.0)
+    return shannon_entropy(evals, base=base)
+
 def get_metrics_DensMat_single_width (circuit_params, num_qubits):
     """
     *returns 3 lists all_vNd, all_pur, all_R2d corresponding
@@ -54,39 +84,36 @@ def get_metrics_DensMat_single_width (circuit_params, num_qubits):
 
     for depth_index in range(circuit_params.depth_min, circuit_params.depth_max+1, circuit_params.depth_step):
         print("Depth = ", depth_index)
-        #density_matrix = get_output_density_matrix(qc, backend)
-        filepath = "C:/Users/maria/Desktop/Entropy_Benchmarking/Qasm_Q5_D15_results_Quest_fixed/Qasm_qc_Q5_D"+str(depth_index)+".csv"
-        density_matrix = read_matrix(filepath, num_qubits)
-        #density_matrix = sanitize_to_density_matrix(matrix)
-        # force hermitian
-        density_matrix = (density_matrix + density_matrix.conj().T) /2
-        # normalise
-        density_matrix /= np.trace(density_matrix)
-        # Repair PSD if needed (clip negative eigenvalues)
-        eigvals, eigvecs = np.linalg.eigh(density_matrix)
-        eigvals = np.clip(eigvals, 0, None)  # remove tiny negative values
-        density_matrix = eigvecs @ np.diag(eigvals) @ eigvecs.conj().T
         
-        # make correct type
-        density_matrix = DensityMatrix(density_matrix)
-        # Metrics
-        # eigvals = np.linalg.eigvalsh(rho)
-        # Von Neumann entropy
-        # vNd = -np.sum(eigvals * np.log2(eigvals + 1e-16)) / num_qubits
-        # Purity
-        # pur = np.real(np.trace(rho @ rho))
-        # Rényi-2 entropy
-        # R2d = -np.log2(pur + 1e-16) / num_qubits
-
-        vNd = entropy(density_matrix, base=2) / num_qubits
-        print("vNd : ",vNd)
-        print("type vNd:",type(vNd))
-        pur = np.real(purity(density_matrix))
+        # get density matrix
+        # C:\Users\maria\Desktop\Entropy_Benchmarking\Entropy_Benchmarking\Entropy_Benchmarking\Code\Quest_Q2_D15_DensityMatrix_NoiseModel\Data_fixed\DensMat_qc_Q2_D1.csv
+        filepath = "./Quest_Q5_D15_DensityMatrix_NoiseModel/data_fixed/DensMat_qc_Q5_D"+str(depth_index)+".csv"
+      
+        density_matrix = read_matrix(filepath, num_qubits)
+        # normalise density matrix
+        density_matrix=density_matrix/np.trace(density_matrix)
+        # force hermitian
+        density_matrix = (density_matrix + density_matrix.conj().T) / 2
+        #print("density matrix type: ", type(density_matrix))
+        #flat = density_matrix.flatten()
+        eigenvalues = eigvalsh(density_matrix)
+        print("eingenvalues: ", eigenvalues)
+        # calculate entropy 
+        eingv = eigenvalues[eigenvalues > 1e-10] # Remove zero entries to avoid log(0)
+        print("eingv: ", eingv)
+        #probs = eingv / np.sum(eingv) # normalize -> get prob distribution
+        vNd = np.sum(-eingv * np.log2(eingv))/num_qubits
+        #vNd = entropy(density_matrix, base=2) / num_qubits
+        #print("vNd : ",vNd)
+        print("vNd /n qubits:", vNd)
+        #print("type vNd:",type(vNd))
+        # purity 
+        pur = np.real(np.trace(density_matrix@density_matrix))#, density_matrix.data)))
         print("pur : ",pur)
-        print("type pur:",type(pur))
+        #print("type pur:",type(pur))
         R2d = -1 * np.log2(pur) / num_qubits
         print("R2d : ",R2d)
-        print("type R2d:",type(R2d))
+        #print("type R2d:",type(R2d))
 
         all_vNd.append(vNd)
         all_pur.append(pur)
