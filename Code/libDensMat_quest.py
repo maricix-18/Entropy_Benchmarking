@@ -59,7 +59,7 @@ def get_metrics_DensMat_single_width (circuit_params, num_qubits):
         
         # get density matrix
         # C:\Users\maria\Desktop\Entropy_Benchmarking\Entropy_Benchmarking\Entropy_Benchmarking\Code\Quest_Q2_D15_DensityMatrix_NoiseModel\Data_fixed\DensMat_qc_Q2_D1.csv
-        filepath = "./Quest_Q6_D15_DensityMatrix_NoiseModel/data_fixed/DensMat_qc_Q6_D"+str(depth_index)+".csv"
+        filepath = "./Quest_Q5_D15_DensityMatrix_NoiseModel/DepolLevelFixed/data_fixed/DensMat_qc_Q5_D"+str(depth_index)+".csv"
       
         density_matrix = read_matrix(filepath, num_qubits)
         # normalise density matrix

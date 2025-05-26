@@ -12,9 +12,9 @@ int main()
   // READING from QASM file
   printf("inside main!\n");
   int depth = 15;
-  for (int i = 1; i <= depth; i++)
+  for (int i = 0; i <= depth; i++)
   {
-    char dir[MAX_LINE_LENGTH] = "C:/Users/maria/Desktop/Entropy_Benchmarking/Qasm_Q6_D15_DensityMatrix/Qasm_qc_Q6_D";
+    char dir[MAX_LINE_LENGTH] = "C:/Users/maria/Desktop/Entropy_Benchmarking/Qasm_Q5_D15_DensityMatrix/Qasm_qc_Q5_D";
     char d_char[20];
     sprintf(d_char, "%d", i);;
     char extension[] = ".txt";
@@ -51,7 +51,7 @@ int main()
     // }
 
     //Save dens mat
-    char dir_tosave[MAX_LINE_LENGTH] = "C:/Users/maria/Desktop/Entropy_Benchmarking/Entropy_Benchmarking/Entropy_Benchmarking/Code/Quest_Q6_D15_DensityMatrix_NoiseModel/Data/DensMat_qc_Q6_D";
+    char dir_tosave[MAX_LINE_LENGTH] = "C:/Users/maria/Desktop/Entropy_Benchmarking/Entropy_Benchmarking/Entropy_Benchmarking/Code/Quest_Q5_D15_DensityMatrix_NoiseModel/DepolLevelFixed/Data/DensMat_qc_Q5_D";
     char extension_tosave[] = ".csv";
     char file_dir[MAX_LINE_LENGTH];
     //set up file to be opened

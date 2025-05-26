@@ -50,6 +50,7 @@ void densmat_qureg(Qureg *qureg, QuESTEnv *env, int *num_qubits, char *file_dir)
                 rotateX(*qureg,(*num_qubits - 1 - qubit),angle);
                 // after every gate apply depolarins local noise
                 float p1 = 0.008;
+                p1 = (3 * p1 / 4.0);
                 mixDepolarising(*qureg, (*num_qubits - 1 - qubit), p1);
               }
           }
@@ -61,6 +62,7 @@ void densmat_qureg(Qureg *qureg, QuESTEnv *env, int *num_qubits, char *file_dir)
                 //printf("Found ry gate: Angle = %lf, Applied to q[%d]\n", angle, qubit);
                 rotateY(*qureg, (*num_qubits - 1 - qubit),angle);
                 float p1 = 0.008;
+                p1 = (3 * p1 / 4.0);
                 mixDepolarising(*qureg, (*num_qubits - 1 - qubit), p1);
               }
           }
@@ -72,6 +74,7 @@ void densmat_qureg(Qureg *qureg, QuESTEnv *env, int *num_qubits, char *file_dir)
                 //printf("Found cz gate: Applied to control q[%d], and target q[%d]\n", qubit_control, qubit_target);
                 controlledPhaseFlip(*qureg, *num_qubits-1 -qubit_control, *num_qubits-1-qubit_target);
                 float p2 = 0.054;
+                p2 = (15 * p2 / 16.0);
                 mixTwoQubitDepolarising(*qureg,(*num_qubits - 1 - qubit_control), (*num_qubits - 1 - qubit_target),p2);
               }
           }

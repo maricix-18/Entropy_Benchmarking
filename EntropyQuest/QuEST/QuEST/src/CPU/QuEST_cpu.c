@@ -136,7 +136,7 @@ void densmatr_mixTwoQubitDephasing(Qureg qureg, int qubit1, int qubit2, qreal de
 
 void densmatr_mixDepolarisingLocal(Qureg qureg, int targetQubit, qreal depolLevel) {
     qreal retain=1-depolLevel;
-
+    printf("Inside densmatr_mixdepolarisingLocal with prob %lf \n", depolLevel);
     long long int numTasks = qureg.numAmpsPerChunk;
     long long int innerMask = 1LL << targetQubit;
     long long int outerMask = 1LL << (targetQubit + (qureg.numQubitsRepresented));
