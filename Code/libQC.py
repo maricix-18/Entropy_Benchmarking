@@ -57,7 +57,11 @@ class CircuitParams:
                 num_angles_per_layer = num_qubits
             else:
                 num_angles_per_layer = 2*num_qubits
-            angles = 2*np.pi*np.random.rand(num_angles_per_layer*self.num_layers) #dim=(1, angles_of_circuit)
+            f_angles = np.random.rand(num_angles_per_layer*self.num_layers)
+            print("Printing freshly generated angles: ", f_angles, "\n")
+            #angles = 2*np.pi*np.random.rand(num_angles_per_layer*self.num_layers) 
+            angles = 2*np.pi*f_angles
+            print("Printing angles from libQC: ", angles, "\n") #dim=(1, angles_of_circuit)
             self.circuits_angles[i] = angles.reshape((self.num_layers, num_angles_per_layer)) #dim=(layers, angles_of_layer)
 
     def to_dict(self):
@@ -336,11 +340,12 @@ def init_circuit(circuit_params, num_qubits):
 
     return qc
 
-
+# !! create circuit layer --------------------------------------------------------------------------------! 
 def add_circuit_layer(circuit_params, num_qubits, qc, layer_index):
     if circuit_params.choice == 'HEA_RIGETTI':
         circuit_angles = circuit_params.circuits_angles[int((num_qubits-circuit_params.num_qubits_min)/circuit_params.num_qubits_step)]
         params = circuit_angles[layer_index]
+        print("Printing circuit_params in add_c_layer: ", params, "\n")
         qc = add_layer_HEA_RIGETTI(qc, num_qubits, params, circuit_params.rx_only)
     elif circuit_params.choice == 'HEA_IONQ':
         circuit_angles = circuit_params.circuits_angles[int((num_qubits-circuit_params.num_qubits_min)/circuit_params.num_qubits_step)]

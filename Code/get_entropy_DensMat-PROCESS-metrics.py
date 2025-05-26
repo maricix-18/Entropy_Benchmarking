@@ -27,14 +27,15 @@ verbose = args.verbose
 resultdir = args.output
 
 # ========================= Parameters =============================
-seed = 837
+seed = 836
+# seed original 837
 np.random.seed(seed) #reference
 
 # Backend
 backend_params = BackendParams('Aer_sim')
 
 # Quantum circuit
-circuit_params = CircuitParams('HEA_RIGETTI', num_qubits_min = 6, num_qubits_max = 6, num_qubits_step=1, depth_min = 0, depth_max = 15)
+circuit_params = CircuitParams('HEA_RIGETTI', num_qubits_min = 5, num_qubits_max = 5, num_qubits_step=1, depth_min = 0, depth_max = 15)
 
 # Noise model
 noise_params = NoiseParams()
@@ -53,9 +54,9 @@ metrics = get_metrics_DensMat(experiment_params)
 # ==================================================================
 # Save metrics
 fullfilename = get_metrics_fullfilename(experiment_params)
-dump_to_json(metrics, fullfilename)
-experiment_params.metrics_file = fullfilename
+#dump_to_json(metrics, fullfilename)
+#experiment_params.metrics_file = fullfilename
 
-# Save experiment
-jsonfilename = get_experiment_fullfilename(experiment_params)
-dump_to_json(experiment_params.to_dict(), jsonfilename)
+## Save experiment
+#jsonfilename = get_experiment_fullfilename(experiment_params)
+#dump_to_json(experiment_params.to_dict(), jsonfilename)

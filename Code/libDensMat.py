@@ -43,25 +43,25 @@ def get_metrics_DensMat_single_width (backend, circuit_params, num_qubits):
         if depth_index>circuit_params.depth_min:
             for index in range(circuit_params.depth_step):
                 qc = add_circuit_layer(circuit_params, num_qubits, qc, depth_index - 1 + index)
-                # for each depth size, save the circuit in qasm format
-                dumped = qc.qasm()
+                # # for each depth size, save the circuit in qasm format
+                # dumped = qc.qasm()
                 
-                filename= "Qasm_Q6_D15_DensityMatrix/Qasm_qc_Q6_D"+str(depth_index)+".txt"
-                with open(filename, "w") as file:
-                    file.write(dumped)      
-                print("\n Quantum circuit \n", qc)
+                # filename= "Qasm_Q6_D15_DensityMatrix/Qasm_qc_Q6_D"+str(depth_index)+".txt"
+                # with open(filename, "w") as file:
+                #     file.write(dumped)      
+                # print("\n Quantum circuit \n", qc)
 
         density_matrix = get_output_density_matrix(qc, backend)
         # SAVE density mat data for quest comparison
-        filename= "QiskitDenMat_NoiseModel_data_Q6_D15/Qasm_qc_Q6_D"+str(depth_index)+".txt"
-        with open(filename, "w") as file:
-            dens_mat = np.array(density_matrix)
-            for row in dens_mat:
-                line = ", ".join(
-                    f"{val.real:+.8f}{val.imag:+.8f}i"  # Format: +0.12345678+0.12345678i
-                    for val in row
-                )
-                file.write(line + "\n")
+        # filename= "QiskitDenMat_NoiseModel_data_Q6_D15/Qasm_qc_Q6_D"+str(depth_index)+".txt"
+        # with open(filename, "w") as file:
+        #     dens_mat = np.array(density_matrix)
+        #     for row in dens_mat:
+        #         line = ", ".join(
+        #             f"{val.real:+.8f}{val.imag:+.8f}i"  # Format: +0.12345678+0.12345678i
+        #             for val in row
+        #         )
+        #         file.write(line + "\n")
         dens_mat = np.array(density_matrix)
         
         # Metrics
