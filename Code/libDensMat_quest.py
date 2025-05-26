@@ -40,34 +40,6 @@ def read_matrix(filepath, num_qubits):
 
     return matrix
 
-def entropy(state, base=2):
-    r"""Calculate the von-Neumann entropy of a quantum state.
-
-    The entropy :math:`S` is given by
-
-    .. math::
-
-        S(\rho) = - Tr[\rho \log(\rho)]
-
-    Args:
-        state (Statevector or DensityMatrix): a quantum state.
-        base (int): the base of the logarithm [Default: 2].
-
-    Returns:
-        float: The von-Neumann entropy S(rho).
-
-    Raises:
-        QiskitError: if the input state is not a valid QuantumState.
-    """
-    import scipy.linalg as la
-
-    # state = _format_state(state, validate=True)
-    # if isinstance(state, Statevector):
-    #     return 0
-    # Density matrix case
-    evals = np.maximum(np.real(la.eigvals(state.data)), 0.0)
-    return shannon_entropy(evals, base=base)
-
 def get_metrics_DensMat_single_width (circuit_params, num_qubits):
     """
     *returns 3 lists all_vNd, all_pur, all_R2d corresponding
@@ -87,7 +59,7 @@ def get_metrics_DensMat_single_width (circuit_params, num_qubits):
         
         # get density matrix
         # C:\Users\maria\Desktop\Entropy_Benchmarking\Entropy_Benchmarking\Entropy_Benchmarking\Code\Quest_Q2_D15_DensityMatrix_NoiseModel\Data_fixed\DensMat_qc_Q2_D1.csv
-        filepath = "./Quest_Q5_D15_DensityMatrix_NoiseModel/data_fixed/DensMat_qc_Q5_D"+str(depth_index)+".csv"
+        filepath = "./Quest_Q6_D15_DensityMatrix_NoiseModel/data_fixed/DensMat_qc_Q6_D"+str(depth_index)+".csv"
       
         density_matrix = read_matrix(filepath, num_qubits)
         # normalise density matrix
