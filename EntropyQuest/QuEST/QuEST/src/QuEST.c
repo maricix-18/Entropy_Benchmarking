@@ -1370,7 +1370,7 @@ void mixDepolarising(Qureg qureg, int targetQubit, qreal prob) {
     validateTarget(qureg, targetQubit, __func__);
     validateOneQubitDepolProb(prob, __func__);
     
-    printf("Current probability in quEST mixDepolarising function %lf\n", prob);
+    //printf("Current probability in quEST mixDepolarising function %lf\n", prob);
     densmatr_mixDepolarising(qureg, targetQubit, (4*prob)/3.0);
 
     qasm_recordComment(qureg,

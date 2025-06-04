@@ -27,7 +27,7 @@ verbose = args.verbose
 resultdir = args.output
 
 # ========================= Parameters =============================
-seed = 836
+seed = 837
 # seed original 837
 np.random.seed(seed) #reference
 
