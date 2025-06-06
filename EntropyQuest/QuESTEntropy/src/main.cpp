@@ -9,12 +9,15 @@
 #include "../eigen-3.4.0/Eigen/Eigenvalues"
 #include "../include/qreg.h"
 #include <iomanip>
+#include <nlohmann/json.hpp>
+#include <fstream>
 
 extern "C"
 {
   #include "../include/mt19937ar.h"
 }
 
+using json = nlohmann::ordered_json;
 using namespace std;
 #define MAX_LINE_LENGTH 256
 #define PI 3.14159265358979323846
@@ -30,7 +33,7 @@ int main()
   int depth_max = 15;
 
   // set qubits
-  int qubits = 8;
+  int qubits = 5;
   int dim = pow(2, qubits);
 
   // angles
@@ -39,9 +42,9 @@ int main()
   double angles_array[total_angles];
 
   // data gathering
-  double vNd[depth_max];
-  double pur[depth_max];
-  double R2d[depth_max];
+  vector<double> vNd;
+  vector<double> pur;
+  vector<double> R2d;
 
   // get angle values
   for (int i = 0; i < total_angles; i++) {
@@ -49,7 +52,8 @@ int main()
     //printf("Random[%d] = %.17f\n", i, r);
     angles_array[i] = r;
   }
-
+  // info
+  cout<< "Qubits: "<<qubits<< " Depth: " <<depth_max <<endl;
   // create env and dens mat qreg
   printf("Create Q Environment\n");
   QuESTEnv env = createQuESTEnv();
@@ -132,14 +136,13 @@ int main()
     //cout << "metric: " << abs(sum_entropy/double(qubits)) <<"\n";
 
     // Von neumann entropy
-    vNd[i] = abs(sum_entropy/double(qubits));
-    
+    vNd.push_back(abs(sum_entropy/double(qubits)));
     // Purity
     // the trace of density_matrix^2
-    pur[i] = (eing_mat*eing_mat).trace().real();
+    pur.push_back((eing_mat*eing_mat).trace().real());
 
     // R2 entropy
-    R2d[i] = -1 * log2(pur[i]) / qubits;
+    R2d.push_back(-1 * log2(pur[i]) / qubits);
   }
  
   // Print dens matrix for check
@@ -170,6 +173,24 @@ int main()
     cout << e << std::endl;
   }
 
+  //json file to write to in
+  string filename = "../../QuESTEntropy/DensityMatrices_metrics/Q" + std::to_string(qubits) + "_D15.json";
+  ofstream file(filename);
+  json j;
+  j["all_vNd_diff_n"] = {vNd};
+  j["all_pur_diff_n"] = {pur};
+  j["all_R2d_diff_n"] = {R2d};
+
+  if (file.is_open())
+  {
+    file<<std::setw(4) << j; 
+  }
+  else
+  {
+    cout << "Nu s-a deschis fișierul!" << endl;
+  }
+
+  file.close();
   //destroy Quest register and environment
   printf("Destroy Qreg\n");
   destroyQureg(density_matrix_qreg, env);

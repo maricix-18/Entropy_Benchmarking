@@ -16,8 +16,11 @@ project(QuEST_Project)
 # ----- USER OPTIONS ----------------------------------------------------------
 # -----------------------------------------------------------------------------
 
-set(USER_SOURCE  "examples/tutorial_example.c"  CACHE STRING "Source to build with QuEST library")
-set(OUTPUT_EXE   "demo"  CACHE STRING "Executable to compile to")
+#set(USER_SOURCE  "examples/tutorial_example.c"  CACHE STRING "Source to build with QuEST library")
+#set(OUTPUT_EXE   "demo"  CACHE STRING "Executable to compile to")
+
+set(USER_SOURCE  "../../QuESTEntropy/src/main.cpp"  CACHE STRING "Source to build with QuEST library")
+set(OUTPUT_EXE   "mymain"  CACHE STRING "Executable to compile to")
 
 option(TESTING "Enable unit testing. This disables compiling USER_SOURCE" OFF)
 
@@ -36,6 +39,7 @@ if (NOT DEFINED ${QuEST_LIB_PATH})
     set(QuEST_LIB SHARED "${QuEST_LIB_PATH}")
 endif()
 
+
 # -----------------------------------------------------------------------------
 # ----- USER EXECUTABLE -------------------------------------------------------
 # -----------------------------------------------------------------------------
@@ -52,6 +56,10 @@ if (NOT TESTING)
     else ()
         target_link_libraries(${OUTPUT_EXE} QuEST m)
     endif()
+endif()
+
+if(DEFINED ENV{CONDA_PREFIX})
+    target_include_directories(${OUTPUT_EXE} PRIVATE "$ENV{CONDA_PREFIX}/lib/python3.11/site-packages/nlohmann_json/include/")
 endif()
 
 # -----------------------------------------------------------------------------

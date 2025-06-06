@@ -96,6 +96,7 @@ dependencies:
     - websockets==11.0.3
     - wrapt==1.15.0
     - zipp==3.18.1
+    - nlohmann_json
 # prefix: C:\Users\maria\miniconda3\envs\MyQiskitEnv
 #prefix: /home/maria/miniconda3/envs/MyQiskitEnv
 
