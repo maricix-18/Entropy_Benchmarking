@@ -63,6 +63,49 @@ void print_to_terminal(vector<double>&vNd, vector<double>&pur, vector<double>&R2
   }
 }
 
+void append_to_json(const std::string& filename, double& vNd,  double& pur, double& R2d) 
+{
+    json j;
+
+    // Read if file already exists
+    if (std::filesystem::exists(filename)) {
+        std::ifstream in(filename);
+        if (in.is_open())
+            in >> j;
+    }
+
+    // Append your data
+    j["all_vNd_diff_n"].push_back(vNd);
+    j["all_pur_diff_n"].push_back(pur);
+    j["all_R2d_diff_n"].push_back(R2d);
+
+    // Write back
+    std::ofstream out(filename);
+    if (out.is_open())
+        out << std::setw(4) << j << std::endl;
+}
+
+void append_to_json_duration(const std::string& filename, auto &duration)
+{
+  json j;
+
+    // Read if file already exists
+    if (std::filesystem::exists(filename)) {
+        std::ifstream in(filename);
+        if (in.is_open())
+            in >> j;
+    }
+
+    // Append your data
+    j["duration"] = duration;
+
+    // Write back
+    std::ofstream out(filename);
+    if (out.is_open())
+        out << std::setw(4) << j << std::endl;
+
+}
+
 int main()
 {
   // set seed
@@ -73,12 +116,15 @@ int main()
   int depth_max = 15;
 
   // set qubits
-  int qubits_max = 18;
+  int qubits_max = 16;
 
-  for (int qubits = 11; qubits < qubits_max; qubits ++)
+  for (int qubits = 10; qubits <= qubits_max; qubits ++)
   {
     // time round
-    //auto start = high_resolution_clock::now(); 
+    auto start = high_resolution_clock::now(); 
+    // open file to append to
+    string filename = "../../QuESTEntropy/DensityMatrices_metrics/Q" + std::to_string(qubits) + "test_D15.json";
+
     // loop for different qubit sizes
     int dim = pow(2, qubits);
     // angles
@@ -87,9 +133,9 @@ int main()
     double angles_array[total_angles];
 
     // data gathering
-    vector<double> vNd;
-    vector<double> pur;
-    vector<double> R2d;
+    // vector<double> vNd;
+    // vector<double> pur;
+    // vector<double> R2d;
 
     // get angle values
     for (int i = 0; i < total_angles; i++) {
@@ -115,10 +161,10 @@ int main()
 
     // populate circuit
     int angl_pos = 0;
-    for (int i = 0; i < depth_max; i++)
+    for (int i = 0; i <= depth_max; i++)
     {
       // time each depth
-      auto start = high_resolution_clock::now(); 
+      //auto start = high_resolution_clock::now(); 
       printf("layer %d \n", i);
       // for each layer add x rotation on all qubits
       for (int j = 0; j < qubits; j++)
@@ -149,6 +195,7 @@ int main()
         }
       }
 
+      // compute metrics
       // get matrix to use Eingensolver library
       Eigen::MatrixXcd eing_mat(dim, dim);
       for (int i = 0; i < dim; i++)
@@ -163,7 +210,7 @@ int main()
         }
         //printf("\n");
       }
-      // for each layer, calculate
+    
       // get eingenvalues
       Eigen::ComplexEigenSolver<Eigen::MatrixXcd> ces;
       ces.compute(eing_mat);
@@ -178,35 +225,25 @@ int main()
         sum_entropy += (-ces.eigenvalues()(e) * log2_z); 
         sum_eingvals += ces.eigenvalues()(e);
       }
-      auto stop = high_resolution_clock::now();
-	    auto duration = duration_cast<seconds>(stop - start).count();
-
-      // Von neumann entropy
-      vNd.push_back(abs(sum_entropy/double(qubits)));
-      // Purity - the trace of density_matrix^2
-      pur.push_back((eing_mat*eing_mat).trace().real());
-      // R2 entropy
-      R2d.push_back(-1 * log2(pur[i]) / qubits);
-
-      // SAVE to json file
-      // string filename = "../../QuESTEntropy/DensityMatrices_metrics/Q" + std::to_string(qubits) + "_D15.json";
-      // ofstream file(filename);
-
-      // j["all_vNd_diff_n"].append();
-      // j["all_pur_diff_n"] = {pur};
-      // j["all_R2d_diff_n"] = {R2d};
-      // j["duration"] = duration;
-
-      // if (file.is_open())
-      // {
-      //   file<<std::setw(4) << j; 
-      // }
       
-      // file.close();
+      // for each layer
+      // Von neumann entropy
+      // vNd.push_back(abs(sum_entropy/double(qubits)));
+      // // Purity - the trace of density_matrix^2
+      // pur.push_back((eing_mat*eing_mat).trace().real());
+      // // R2 entropy
+      // R2d.push_back(-1 * log2(pur[i]) / qubits);
+
+      double vNd = abs(sum_entropy/double(qubits));
+      double pur = (eing_mat*eing_mat).trace().real();
+      double R2d = -1 * log2(pur) / qubits;
+
+      append_to_json(filename, vNd, pur, R2d);
 
     }
-
-    // // SAVE to json file
+    auto stop = high_resolution_clock::now();
+	  auto duration = duration_cast<nanoseconds>(stop - start).count();
+    // SAVE to json file
     // string filename = "../../QuESTEntropy/DensityMatrices_metrics/Q" + std::to_string(qubits) + "_D15.json";
     // ofstream file(filename);
     // json j;
@@ -219,15 +256,16 @@ int main()
     // {
     //   file<<std::setw(4) << j; 
     // }
+    append_to_json_duration(filename, duration);
     
-    // file.close();
+    //file.close();
     //destroy Quest register and environment
     printf("Destroy Qreg\n");
     destroyQureg(density_matrix_qreg, env);
     printf("Destroy Environment\n");
     destroyQuESTEnv(env);
 
-    printf("%d\n ", angl_pos);
+    //printf("%d\n ", angl_pos);
   }
 
   return 0;
