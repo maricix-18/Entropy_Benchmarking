@@ -10,17 +10,32 @@
 #define MAX_LINE_LENGTH 256
 #define PI 3.14159265358979323846
 
+void generate_angles(int num_angles, double *angles_list)
+{
+  for (int i = 0; i < num_angles; i++) {
+    double r = 2*PI*genrand_res53();
+    //printf("Random[%d] = %.17f\n", i, r);
+    angles_list[i] = r;
+  }
+}
+
 int main()
 {
-  // READING from QASM file
-  printf("inside main! Test random numb generator: \n");
+  printf("inside main! \n");
 
-  init_genrand(837);  // Equivalent to np.random.seed(837)
+  init_genrand(837);  // set seed 
+  int num_qubits = 5;
+  int angles_per_layer = 2 * num_qubits;
+  int depth_max = 15;
+  int depth_min = 0;
+  int num_angles = angles_per_layer * depth_max;
+  double angles_list[num_angles];
 
-  for (int i = 0; i < 15; i++) {
-    double r = 2*PI*genrand_res53();  // [0, 1], inclusive
-    printf("Random[%d] = %.17f\n", i, r);
-    
+  generate_angles(num_angles, angles_list);
+  printf("angles after generation:\n");
+  for (int i = 0; i < num_angles; i++)
+  {
+    printf("%.8lf \n", angles_list[i]);
   }
 
   // READ QASM FILE
