@@ -118,12 +118,12 @@ int main()
   // set qubits
   int qubits_max = 16;
 
-  for (int qubits = 10; qubits <= qubits_max; qubits ++)
+  for (int qubits = 11; qubits <= qubits_max; qubits ++)
   {
     // time round
     auto start = high_resolution_clock::now(); 
     // open file to append to
-    string filename = "../../QuESTEntropy/DensityMatrices_metrics/Q" + std::to_string(qubits) + "test_D15.json";
+    string filename = "../../QuESTEntropy/DensityMatrices_metrics/Q" + std::to_string(qubits) + "_D15.json";
 
     // loop for different qubit sizes
     int dim = pow(2, qubits);
