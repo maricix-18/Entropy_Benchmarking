@@ -14,7 +14,9 @@
 #include <fstream>
 #include <chrono>
 using namespace std::chrono;
-
+/**
+ * OPTIMIZED VERSION OF MAIN_original
+ */
 extern "C"
 {
   #include "../include/mt19937ar.h"
@@ -118,13 +120,12 @@ int main()
   int depth_max = 15;
 
   // set qubits
-  int qubits_max = 15;
+  int qubits_max = 9;
 
-  // angles
+  // angles for max qubit register
   int angles_per_layer = 2*qubits_max;
   int total_angles = angles_per_layer*depth_max;
   double angles_array[total_angles];
-
   // get angle values
   for (int i = 0; i < total_angles; i++) {
     double r = 2*PI*genrand_res53();
@@ -135,20 +136,12 @@ int main()
   printf("Create Q Environment\n");
   QuESTEnv env = createQuESTEnv();
 
-  // Depolarising noise 1 q gate
-  float p1 = 0.008;
-  //p1 = (3 * p1 / 4.0); // scale for quest function
-
-  // Depolarising noise 2q gate
-  float p2 = 0.054;
-  //p2 = (15 * p2 / 16.0); // scale for quest function
-
-  for (int qubits = 11; qubits <= qubits_max; qubits ++)
+  for (int qubits = 3; qubits <= qubits_max; qubits ++)
   {
     // time round
     auto start = high_resolution_clock::now(); 
     // open file to append to
-    string filename = "../../QuESTEntropy/DensityMatrices_metrics/Q" + std::to_string(qubits) + "_D15.json";
+    string filename = "../../QuESTEntropy/DensityMatrices_metrics/Q" + std::to_string(qubits) + "test2_D15.json";
 
     // loop for different qubit sizes
     int dim = pow(2, qubits);
@@ -162,6 +155,14 @@ int main()
     // create env and dens mat qreg
     printf("Create Q Register\n");
     Qureg density_matrix_qreg = createDensityQureg(qubits, env);
+
+    // Depolarising noise 1 q gate
+    float p1 = 0.008;
+    //p1 = (3 * p1 / 4.0); // scale for quest function
+
+    // Depolarising noise 2q gate
+    float p2 = 0.054;
+    //p2 = (15 * p2 / 16.0); // scale for quest function
 
     // populate circuit
     int angl_pos = 0;
